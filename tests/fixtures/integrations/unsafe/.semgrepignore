@@ -1,0 +1,2 @@
+# The scanned code asking Semgrep to skip its own payload.
+hidden.py

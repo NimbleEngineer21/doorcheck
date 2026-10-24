@@ -1,0 +1,12 @@
+{
+  "domain": "unsafe_demo",
+  "name": "Unsafe demo (test fixture)",
+  "version": "1.0.0",
+  "requirements": [
+    "requests==2.31.0",
+    "icmplib>=3.0",
+    "-r /etc/passwd",
+    "demo @ https://example.invalid/demo-1.0.zip",
+    "doorcheck-fixture-not-on-pypi==1.0"
+  ]
+}

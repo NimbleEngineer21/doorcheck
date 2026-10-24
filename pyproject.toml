@@ -16,6 +16,9 @@ classifiers = [
     "Topic :: Security",
 ]
 
+[project.entry-points."doorcheck.adapters"]
+semgrep = "doorcheck.adapters.semgrep:Semgrep"
+
 [project.urls]
 Source = "https://github.com/nimbleengineer21/doorcheck"
 Security = "https://github.com/nimbleengineer21/doorcheck/security/policy"

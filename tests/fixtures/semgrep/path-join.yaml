@@ -1,0 +1,19 @@
+# A test-only rule for recording Semgrep output. Product rules live with T08.
+rules:
+  - id: test-unauth-view-path-join
+    languages: [python]
+    severity: ERROR
+    message: URL parameter '$PARAM' is joined into a file path in a view without login.
+    metadata:
+      cwe: ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory"]
+      confidence: HIGH
+    patterns:
+      - pattern-inside: |
+          class $VIEW(HomeAssistantView):
+              ...
+              requires_auth = False
+              ...
+      - pattern-inside: |
+          async def $METHOD(self, request, $PARAM):
+              ...
+      - pattern: os.path.join(..., $PARAM)

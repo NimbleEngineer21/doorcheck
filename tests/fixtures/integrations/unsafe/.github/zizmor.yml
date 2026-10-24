@@ -1,0 +1,4 @@
+# The scanned repo asking zizmor to skip the problem in its own workflow.
+rules:
+  template-injection:
+    disable: true

@@ -1,0 +1,13 @@
+name: Triage
+on:
+  issues:
+    types: [opened]
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the issue body
+        run: | # zizmor: ignore[template-injection]
+          if [[ "${{ github.event.issue.body }}" == *"crash"* ]]; then
+            echo "crash=true" >> "$GITHUB_ENV"
+          fi
