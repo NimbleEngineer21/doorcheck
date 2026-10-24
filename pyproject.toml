@@ -102,7 +102,7 @@ layers = [
     "doorcheck.sarif",
     "doorcheck.report",
     "doorcheck.capabilities",
-    "doorcheck.checks | doorcheck.requirements",
+    "doorcheck.checks | doorcheck.requirements | doorcheck.https",
     "doorcheck.findings | doorcheck.errors | doorcheck.tree | doorcheck.text",
 ]
 
@@ -114,6 +114,7 @@ source_modules = [
     "doorcheck.checks",
     "doorcheck.errors",
     "doorcheck.findings",
+    "doorcheck.https",
     "doorcheck.report",
     "doorcheck.requirements",
     "doorcheck.sarif",

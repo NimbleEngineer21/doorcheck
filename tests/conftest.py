@@ -1,9 +1,12 @@
 import hashlib
+import io
 import json
 import os
+import socket
 import subprocess
 import urllib.request
 import urllib.response
+from http.client import HTTPMessage
 from pathlib import Path
 from typing import Any
 
@@ -73,3 +76,58 @@ def sarif_schema(pytestconfig: pytest.Config) -> dict[str, Any]:
         pytest.fail("Downloaded SARIF schema doesn't match its pinned hash.")
     schema: dict[str, Any] = json.loads(data)
     return schema
+
+
+@pytest.fixture
+def offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail the test if anything tries to open a network connection."""
+
+    def refuse(*args: object, **kwargs: object) -> None:
+        raise AssertionError("tests must not use the network")
+
+    monkeypatch.setattr(socket.socket, "connect", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+
+
+class FakeHTTPS(urllib.request.BaseHandler):
+    """Serves canned responses: bytes for a page, (status, location) for a redirect,
+    or an exception to raise. It runs before urllib's own HTTPS handler, so tests
+    never reach the network."""
+
+    handler_order = 100
+
+    def __init__(self, pages: dict[str, object]) -> None:
+        self.pages = pages
+        self.timeouts: list[float] = []
+        self.user_agents: list[str | None] = []
+
+    def https_open(self, request: urllib.request.Request) -> urllib.response.addinfourl:
+        self.timeouts.append(request.timeout)  # type: ignore[attr-defined]  # set by urllib
+        self.user_agents.append(request.get_header("User-agent"))
+        page = self.pages[request.full_url]
+        if isinstance(page, BaseException):
+            raise page
+        headers = HTTPMessage()
+        status, body = 200, page
+        if isinstance(page, io.BytesIO):
+            response = urllib.response.addinfourl(page, headers, request.full_url, 200)
+            response.msg = "fake"
+            return response
+        if isinstance(page, tuple):
+            status, location = page
+            headers["Location"] = location
+            body = b""
+        response = urllib.response.addinfourl(io.BytesIO(body), headers, request.full_url, status)  # type: ignore[arg-type]
+        response.msg = "fake"
+        return response
+
+
+class CountingBody(io.BytesIO):
+    def __init__(self, data: bytes) -> None:
+        super().__init__(data)
+        self.consumed = 0
+
+    def read(self, size: int | None = -1) -> bytes:
+        chunk = super().read(size)
+        self.consumed += len(chunk)
+        return chunk
