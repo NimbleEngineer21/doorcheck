@@ -7,7 +7,8 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "nimbleengineer21" }]
 requires-python = ">=3.13.2"
-dependencies = []
+# The same range Home Assistant requires, so installing doorcheck there changes nothing.
+dependencies = ["packaging>=23.1"]
 classifiers = [
     "Development Status :: 1 - Planning",
     "Programming Language :: Python :: 3.13",
@@ -102,6 +103,7 @@ layers = [
     "doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
     "doorcheck.capabilities",
+    "doorcheck.pypi",
     "doorcheck.checks | doorcheck.requirements | doorcheck.https",
     "doorcheck.findings | doorcheck.errors | doorcheck.tree | doorcheck.text",
 ]
@@ -116,6 +118,7 @@ source_modules = [
     "doorcheck.fetch",
     "doorcheck.findings",
     "doorcheck.https",
+    "doorcheck.pypi",
     "doorcheck.report",
     "doorcheck.requirements",
     "doorcheck.sarif",
