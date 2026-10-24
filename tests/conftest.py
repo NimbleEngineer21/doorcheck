@@ -3,9 +3,11 @@ import io
 import json
 import os
 import socket
+import stat
 import subprocess
 import urllib.request
 import urllib.response
+import zipfile
 from http.client import HTTPMessage
 from pathlib import Path
 from typing import Any
@@ -131,3 +133,26 @@ class CountingBody(io.BytesIO):
         chunk = super().read(size)
         self.consumed += len(chunk)
         return chunk
+
+
+LINK = object()  # marks a zip entry as a link; the value after it is the target
+
+
+def make_zip(entries: dict[str, Any], comment: bytes = b"") -> bytes:
+    """A zip in memory. A value is file content, None for a folder entry, or
+    (LINK, target) for a link entry as git archive writes them."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.comment = comment
+        for name, value in entries.items():
+            info = zipfile.ZipInfo(name)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            if value is None:
+                info.external_attr = (stat.S_IFDIR | 0o755) << 16
+                archive.writestr(info, b"")
+            elif isinstance(value, tuple) and value[0] is LINK:
+                info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(info, value[1])
+            else:
+                archive.writestr(info, value)
+    return buffer.getvalue()
