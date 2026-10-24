@@ -18,6 +18,7 @@ classifiers = [
 
 [project.entry-points."doorcheck.adapters"]
 semgrep = "doorcheck.adapters.semgrep:Semgrep"
+zizmor = "doorcheck.adapters.zizmor:Zizmor"
 
 [project.urls]
 Source = "https://github.com/nimbleengineer21/doorcheck"

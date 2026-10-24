@@ -12,6 +12,7 @@ from pathlib import Path
 
 from doorcheck.adapters.base import Adapter, Parsed, prepare, raw_output
 from doorcheck.adapters.semgrep import Semgrep
+from doorcheck.adapters.zizmor import Zizmor
 
 FIXTURES = Path("tests/fixtures")
 CASES = ("unsafe", "clean")
@@ -19,7 +20,7 @@ CASES = ("unsafe", "clean")
 
 def adapters(fixtures: Path) -> list[Adapter]:
     rules = (fixtures / "semgrep" / "path-join.yaml",)
-    return [Semgrep(rules)]
+    return [Semgrep(rules), Zizmor()]
 
 
 def record(tools: Sequence[Adapter], fixtures: Path, cases: Sequence[str] = CASES) -> list[str]:
