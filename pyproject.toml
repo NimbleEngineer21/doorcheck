@@ -1,0 +1,109 @@
+[project]
+name = "doorcheck"
+version = "0.0.0"
+description = "See what a Home Assistant integration can do before you let it in."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "nimbleengineer21" }]
+requires-python = ">=3.13.2"
+dependencies = []
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+]
+
+[project.urls]
+Source = "https://github.com/nimbleengineer21/doorcheck"
+Security = "https://github.com/nimbleengineer21/doorcheck/security/policy"
+
+[dependency-groups]
+dev = [
+    "commitizen==4.19.2",
+    "complexipy==8.1.0",
+    "import-linter==2.15",
+    "jsonschema==4.26.0",
+    "mutmut==3.8.0",
+    "mypy==2.4.0",
+    "pip-audit==2.10.1",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.1",
+]
+
+[build-system]
+requires = ["uv_build==0.13.4"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Nothing published in the last three days is installed, the same rule Renovate
+# follows, so a compromised release has time to be noticed and pulled.
+exclude-newer = "3 days"
+
+[tool.uv.build-backend]
+# Only the package ships. Tests, fixtures and tooling never reach PyPI.
+source-exclude = ["tests", "tools", ".github"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+# Deliberately unsafe code that scanning tools are recorded against.
+extend-exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # import order
+    "B",            # bugbear
+    "UP",           # pyupgrade
+    "S",            # bandit security checks
+    "SIM",          # simplifications
+    "RUF",
+    "ERA",          # commented-out code
+    "PTH",          # pathlib over os.path
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Asserts are how pytest checks results.
+"tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers --cov --cov-branch --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/doorcheck", "tools"]
+
+[tool.coverage.report]
+fail_under = 90
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.importlinter]
+root_packages = ["doorcheck"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "The engine never depends on Home Assistant"
+type = "forbidden"
+source_modules = ["doorcheck"]
+forbidden_modules = ["homeassistant"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_provider = "pep621"
+
+[tool.mutmut]
+source_paths = ["src/doorcheck/", "tools/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+# Data the tests read, copied into mutmut's working copy.
+also_copy = ["benchmark/"]
+# Coverage of mutated copies is meaningless and would fail the threshold.
+pytest_add_cli_args = ["--no-cov"]

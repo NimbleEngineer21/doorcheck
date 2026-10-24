@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.egg-info/
+.coverage
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+mutants/
+dist/
+.complexipy_cache/
+.import_linter_cache/
+.benchmark-cache/
