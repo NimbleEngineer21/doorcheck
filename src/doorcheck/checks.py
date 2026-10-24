@@ -45,6 +45,8 @@ class Check:
         require(isinstance(self.name, str) and self.name, "check name is required")
         require(isinstance(self.version, str), "version must be a string")
         require(isinstance(self.status, Status), "status must be a Status")
+        # Freeze the caller's collection before checking the coverage invariant.
+        object.__setattr__(self, "problems", tuple(self.problems))
         require(all(isinstance(p, Problem) for p in self.problems), "problems must be Problems")
         has_gaps = self.status in (Status.PARTIAL, Status.FAILED)
         require(has_gaps == bool(self.problems), f"{self.status} needs problems iff it has gaps")

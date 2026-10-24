@@ -25,8 +25,16 @@ def _exactly(message: str) -> str:
 
 @pytest.mark.parametrize(
     "path",
-    ["/etc/passwd", "../outside.py", "a/../../outside.py", "a\\b.py", "a\0b.py", ""],
-    ids=["absolute", "parent", "nested-parent", "backslash", "nul", "empty"],
+    [
+        "/etc/passwd",
+        "//etc/passwd",
+        "../outside.py",
+        "a/../../outside.py",
+        "a\\b.py",
+        "a\0b.py",
+        "",
+    ],
+    ids=["absolute", "double-slash", "parent", "nested-parent", "backslash", "nul", "empty"],
 )
 def test_location_rejects_paths_outside_the_scanned_root(path: str) -> None:
     with pytest.raises(ValueError, match=_exactly(f"path escapes root: {path!r}")):
@@ -142,14 +150,27 @@ def _expected_fingerprint(rule: str, path: str, what: object) -> str:
 
 def test_the_fingerprint_is_rule_path_and_evidence() -> None:
     finding = make_finding(evidence="open( x )\n  .read()")
-    expected = _expected_fingerprint(finding.rule_id, finding.location.path, "open( x ) .read()")
+    expected = _expected_fingerprint(finding.rule_id, finding.location.path, "open( x )\n  .read()")
     assert finding.fingerprint == expected
 
 
-def test_the_fingerprint_ignores_lines_and_spacing() -> None:
+def test_the_fingerprint_ignores_positions_and_surrounding_whitespace() -> None:
     first = make_finding(location=Location("a.py", 3, 1), evidence="open(x)  .read()")
-    moved = make_finding(location=Location("a.py", 90, 5), evidence="  open(x) .read()\n")
+    moved = make_finding(location=Location("a.py", 90, 5), evidence="  open(x)  .read()\n")
     assert first.fingerprint == moved.fingerprint
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("open(x)", "open( x )"),
+        ("open('a b')", "open('a  b')"),
+        ("const name = 'a b';", "const name = 'a  b';"),
+        ("message: |\n  a\n  b", "message: |\n  a b"),
+    ],
+)
+def test_internal_evidence_whitespace_is_not_normalized(first: str, second: str) -> None:
+    assert make_finding(evidence=first).fingerprint != make_finding(evidence=second).fingerprint
 
 
 def test_the_fingerprint_changes_with_rule_file_or_code() -> None:

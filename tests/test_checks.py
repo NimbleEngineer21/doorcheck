@@ -58,6 +58,17 @@ def test_partial_and_failed_checks_say_why(status: Status, problems: tuple[Probl
     assert Check("semgrep", "1.0", status, problems).status is status
 
 
+@pytest.mark.parametrize("status", list(Status))
+def test_mutating_the_source_list_cannot_change_a_checks_coverage(status: Status) -> None:
+    expected = (GAP,) if status in (Status.PARTIAL, Status.FAILED) else ()
+    source = list(expected)
+    check = Check("semgrep", "1.0", status, source)  # type: ignore[arg-type]
+    source.clear()
+    source.append(Problem("problem.tool_failed"))
+    assert check.problems == expected
+    assert isinstance(check.problems, tuple)
+
+
 @pytest.mark.parametrize(
     ("status", "problems"),
     [
@@ -82,6 +93,7 @@ def test_a_status_has_problems_exactly_when_something_wasnt_covered(
         ({"version": None}, "version must be a string"),
         ({"status": "complete"}, "status must be a Status"),
         ({"problems": ("gap",)}, "problems must be Problems"),
+        ({"problems": ["gap"]}, "problems must be Problems"),
     ],
 )
 def test_invalid_checks_are_refused(fields: dict[str, Any], message: str) -> None:

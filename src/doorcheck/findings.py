@@ -65,8 +65,8 @@ class Location:
 
     def __post_init__(self) -> None:
         require(isinstance(self.path, str), "path must be a string")
-        parts = PurePosixPath(self.path).parts
-        inside = bool(parts) and parts[0] != "/" and ".." not in parts
+        path = PurePosixPath(self.path)
+        inside = bool(path.parts) and not path.is_absolute() and ".." not in path.parts
         plain = "\\" not in self.path and "\0" not in self.path
         require(inside and plain, f"path escapes root: {self.path!r}")
         require(is_int(self.line) and self.line >= 1, "line must be an integer from 1")
@@ -102,9 +102,9 @@ class Finding:
 
     @property
     def fingerprint(self) -> str:
-        """The same for the same finding in another version of the code: line numbers
-        and spacing are left out, so moved or reformatted code keeps its fingerprint."""
-        what = " ".join((self.evidence or "").split()) or sorted(self.params.items())
+        """Identify a finding without its line or column. Surrounding evidence whitespace
+        is ignored; internal whitespace is preserved because it can change code's meaning."""
+        what = (self.evidence or "").strip() or sorted(self.params.items())
         text = json.dumps([self.rule_id, self.location.path, what])
         return hashlib.sha256(text.encode()).hexdigest()[:16]
 
