@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # check out the code; nothing else
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # One entry per gate. To add a tool, add an entry here.
+        include:
+          - name: lint
+            run: uv run ruff check .
+          - name: format
+            run: uv run ruff format --check .
+          - name: types
+            run: uv run mypy
+          - name: complexity
+            run: uv run complexipy src tools --max-complexity-allowed 14
+          - name: imports
+            run: uv run lint-imports
+          - name: tests
+            run: uv run pytest
+          # Home Assistant 2025.11, the oldest release supported, runs Python 3.13.
+          - name: tests-python-3.13
+            run: |
+              uv sync --locked --python 3.13
+              uv run --python 3.13 pytest --no-cov
+          - name: mutation
+            run: |
+              uv run mutmut run
+              uv run mutmut export-cicd-stats
+              uv run python -m tools.mutation_gate
+          - name: audit
+            run: |
+              uv export --frozen --no-emit-project --all-groups --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+              uv run pip-audit -r "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip --strict
+          - name: package
+            run: |
+              uv build
+              uv run python -m tools.check_dist dist/*
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4"
+          enable-cache: false
+      - run: uv sync --locked
+      # The command arrives through an environment variable instead of being
+      # pasted into the script, the pattern that makes workflow injection possible.
+      - name: Run ${{ matrix.name }}
+        env:
+          CHECK: ${{ matrix.run }}
+        run: bash -euo pipefail -c "$CHECK"
+
+  osv-scanner:
+    name: osv-scanner
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # check out the lockfile; nothing else
+    timeout-minutes: 10
+    env:
+      OSV_VERSION: v2.7.0
+      OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download OSV-Scanner and verify its checksum
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+      - run: '"$RUNNER_TEMP/osv-scanner" scan source --lockfile uv.lock'

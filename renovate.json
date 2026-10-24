@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits"
+  ],
+  "minimumReleaseAge": "3 days",
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "description": "Scanning tool versions pinned in the adapters. A bump needs re-recorded tool output (tools/record_tool_output.py).",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^src/doorcheck/adapters/.+\\.py$/"
+      ],
+      "matchStrings": [
+        "version = \"(?<currentValue>[^\"]+)\"\\s+# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "doorcheck's own runtime dependencies keep the ranges Home Assistant uses; the lockfile pins them for CI.",
+      "matchManagers": [
+        "pep621"
+      ],
+      "matchDepTypes": [
+        "project.dependencies"
+      ],
+      "rangeStrategy": "update-lockfile"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+name: Conventional Commits
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: commits-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: commit messages
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # read the PR's commits; nothing else
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4"
+          enable-cache: false
+      - run: uv sync --locked
+      # Untrusted text is passed through environment variables, never
+      # interpolated into the script, so a crafted PR title can't run commands.
+      - name: Check commit messages
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: uv run cz check --rev-range "origin/${BASE_REF}..HEAD"
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: uv run cz check --message "$PR_TITLE"
