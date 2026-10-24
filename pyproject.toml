@@ -102,7 +102,7 @@ type = "layers"
 layers = [
     "doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
-    "doorcheck.capabilities",
+    "doorcheck.capabilities | doorcheck.adapters",
     "doorcheck.dependencies",
     "doorcheck.pypi",
     "doorcheck.checks | doorcheck.requirements | doorcheck.https",
