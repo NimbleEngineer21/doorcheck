@@ -1,0 +1,9 @@
+# Every change needs the maintainer's review. Paths below are the most
+# sensitive and will need a second reviewer once there is one.
+*                       @nimbleengineer21
+/.github/               @nimbleengineer21
+/pyproject.toml         @nimbleengineer21
+/uv.lock                @nimbleengineer21
+/tools/                 @nimbleengineer21
+/SECURITY.md            @nimbleengineer21
+/benchmark/             @nimbleengineer21

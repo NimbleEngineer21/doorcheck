@@ -1,0 +1,31 @@
+name: A wrong or missing finding
+description: Doorcheck flagged something that's fine, or missed something it should see.
+labels: [detection]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        If the missed problem is a real, unfixed security problem in someone
+        else's project, don't describe it here. Tell that project privately first
+        (see DISCLOSURE.md); a public issue can wait until it's fixed.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which is it
+      options:
+        - A finding about code that's fine (a false alarm)
+        - Something Doorcheck should have noticed (a miss)
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule or capability
+      description: The rule id from the report, if there is one.
+  - type: textarea
+    id: example
+    attributes:
+      label: The code
+      description: The smallest example you can share, or a link to public code at a fixed commit.
+    validations:
+      required: true
