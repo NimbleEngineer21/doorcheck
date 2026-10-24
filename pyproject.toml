@@ -17,6 +17,7 @@ classifiers = [
 ]
 
 [project.entry-points."doorcheck.adapters"]
+osv-scanner = "doorcheck.adapters.osv:OsvScanner"
 semgrep = "doorcheck.adapters.semgrep:Semgrep"
 zizmor = "doorcheck.adapters.zizmor:Zizmor"
 
