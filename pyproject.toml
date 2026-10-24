@@ -100,7 +100,7 @@ name = "Each layer builds only on the layers below it"
 type = "layers"
 layers = [
     "doorcheck.checks",
-    "doorcheck.findings | doorcheck.errors | doorcheck.text",
+    "doorcheck.findings | doorcheck.errors | doorcheck.tree | doorcheck.text",
 ]
 
 [[tool.importlinter.contracts]]
@@ -111,6 +111,7 @@ source_modules = [
     "doorcheck.errors",
     "doorcheck.findings",
     "doorcheck.text",
+    "doorcheck.tree",
 ]
 forbidden_modules = ["subprocess", "doorcheck.adapters"]
 
