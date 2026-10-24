@@ -1,0 +1,512 @@
+# Benchmark corpus. Code is fetched at these exact commits when the benchmark runs;
+# nothing here is ever vendored into the repo or executed.
+#
+# kind = "vulnerable": a published bug; each [[case.expect]] must be found.
+# kind = "fixed": the release that fixed it; nothing Serious or Review should fire.
+# kind = "reference": code assumed benign. Serious or Review findings count as
+#   false alarms until someone triages them; a confirmed bug moves to "vulnerable".
+#
+# Reference set: 7 popular integrations, then a random sample (Python random.Random,
+# seed 20261024) of hacs/default at commit 26677ecf6ffe5d279972542b8966e40aee3998cd:
+# 43 more integrations and 20 dashboard cards, each pinned to its HEAD on 2026-10-24.
+
+[[case]]
+id = "hacs-1.9.0"
+repo = "hacs/integration"
+commit = "275d6cc28070145931a68bb58a39feefec9f41d9"
+kind = "vulnerable"
+note = "Unauthenticated /hacsfiles view reads files from a URL path (2021 disclosure)."
+
+[[case.expect]]
+rule = "ha-unauth-view-unsanitized-path"
+path = "custom_components/hacs/helpers/classes/frontend_view.py"
+line = 24
+
+[[case]]
+id = "hacs-1.10.0"
+repo = "hacs/integration"
+commit = "6fbce52d7fc6c55ffdd62602cf226076bb4fb27b"
+kind = "fixed"
+note = "Adds sanitize_path."
+
+[[case]]
+id = "fontawesome-1.2.0"
+repo = "thomasloven/hass-fontawesome"
+commit = "73e51df7fc7b477dd723a7ea107d6531adb61d2a"
+kind = "vulnerable"
+note = "Unauthenticated view joins a URL path into a file read (2021 disclosure)."
+
+[[case.expect]]
+rule = "ha-unauth-view-unsanitized-path"
+path = "custom_components/fontawesome/custom_component_server.py"
+line = 19
+
+[[case]]
+id = "fontawesome-1.3.0"
+repo = "thomasloven/hass-fontawesome"
+commit = "6b3e6da7b07d88c65fa4ed631d3d92a57de1d1d0"
+kind = "fixed"
+note = "Adds sanitize_path."
+
+[[case]]
+id = "dwains-2.0.0"
+repo = "dwainscheeren/dwains-lovelace-dashboard"
+commit = "9405da9a6ccde48dba277eb7ebfb909bf3fa7eeb"
+kind = "vulnerable"
+note = "Unauthenticated view joins a URL path into a file read (2021 disclosure)."
+
+[[case.expect]]
+rule = "ha-unauth-view-unsanitized-path"
+path = "custom_components/dwains_dashboard/load_plugins.py"
+line = 52
+
+[[case]]
+id = "dwains-2.0.1"
+repo = "dwainscheeren/dwains-lovelace-dashboard"
+commit = "8878188234add16f0dbe47a75c1e465ea7d488eb"
+kind = "fixed"
+note = "View requires authentication."
+
+[[case]]
+id = "tapo-control-workflow"
+repo = "JurajNyiri/HomeAssistant-Tapo-Control"
+commit = "e66f4a3579e4facf13d1d6421f7a1cf887b79d83"
+kind = "vulnerable"
+note = "Issue body pasted into a shell step (GHSL-2025-101, CVE-2025-55192)."
+
+[[case.expect]]
+rule = "zizmor/template-injection"
+path = ".github/workflows/issues.yml"
+line = 21
+
+[[case.expect]]
+rule = "zizmor/template-injection"
+path = ".github/workflows/issues.yml"
+line = 23
+
+[[case]]
+id = "tapo-control-workflow-fixed"
+repo = "JurajNyiri/HomeAssistant-Tapo-Control"
+commit = "2a3b80ff128ddf4f410c97dd47a94343792ce43c"
+kind = "fixed"
+note = "Fix commit for GHSL-2025-101."
+
+[[case]]
+id = "ref-integration-alandtse--alexa_media_player"
+repo = "alandtse/alexa_media_player"
+commit = "330fe9c378f113cfd2c95d3c7ff5fefa7fda2fb9"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-blakeblackshear--frigate-hass-integration"
+repo = "blakeblackshear/frigate-hass-integration"
+commit = "ddfe9cca72a1e9c1985cacab813214f2ec1d7b6d"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-frenck--spook"
+repo = "frenck/spook"
+commit = "c456e59a9ba40e0aa1711fae8d4ffad4573032ce"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-mampfes--hacs_waste_collection_schedule"
+repo = "mampfes/hacs_waste_collection_schedule"
+commit = "29ca43378fc0f5ade5f8b9b10d2d04a3637b4b23"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-medvedzot--mopeka-ha"
+repo = "MedVedZot/mopeka-ha"
+commit = "414c67f64f5891726301117b8431a366b2ef617c"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-ctznsniiips--virtual_lymow"
+repo = "CtznSniiips/virtual_lymow"
+commit = "bc912878da0063794f1cfcf358437135744caa80"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-jurajnyiri--homeassistant-tapo-control"
+repo = "JurajNyiri/HomeAssistant-Tapo-Control"
+commit = "6d2c8adb81f3551070ec62fd9590f26254df145a"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-thomasloven--hass-browser_mod"
+repo = "thomasloven/hass-browser_mod"
+commit = "eddd30088b00b0a5f438de685f90d176e38afd99"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-d03n3rfr1tz3--hass-divoom"
+repo = "d03n3rfr1tz3/hass-divoom"
+commit = "a69f5f5aa98cbddda2e961e56fb9f7a72079a3ca"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-niddu85--home-assistant-navimow"
+repo = "niddu85/home-assistant-navimow"
+commit = "78f86565e4700cbf0ab8ee1c192f211a28ca018b"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-astrandb--sentio"
+repo = "astrandb/sentio"
+commit = "ce6595092cd94b82e50d7147a6b9187436b59652"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-frimtec--hass-compal-wifi"
+repo = "frimtec/hass-compal-wifi"
+commit = "2ad8e748ffbe708f057aeb85b4ba7987ef7848d9"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-basnijholt--adaptive-lighting"
+repo = "basnijholt/adaptive-lighting"
+commit = "b2ca188df30cb51c5215bec7ef0686000e537efe"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-lint-free-technology--uix"
+repo = "Lint-Free-Technology/uix"
+commit = "0e9fa34eea4f709644ab3158ed8947754c0a4012"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-pushcloudapp--home-assistant"
+repo = "PushCloudApp/home-assistant"
+commit = "5e2c8c58cce418535f463f5ee9f414d9fe57f867"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-agentcny--ha-oebb"
+repo = "agentcny/ha-oebb"
+commit = "c84213b12c45ad0584e026ada6a7987f09d4c701"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-ankohanse--hass-elite-cloud"
+repo = "ankohanse/hass-elite-cloud"
+commit = "9164bd7cdcce2bcb23f2a0ef425d829a07289bf2"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-tejxhdx--minesweeper-ha"
+repo = "tejxhdx/minesweeper-ha"
+commit = "a7760f305f94330a82ed4dafca22d673ccd96b48"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-rosch100--fritzbox-vpn"
+repo = "rosch100/fritzbox-vpn"
+commit = "fe6cfb28421c7500514ac00be780d50169e27957"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-nitaybz--ha-pima"
+repo = "nitaybz/ha-pima"
+commit = "e7a2704e9faa2aaefcc49cd1ede01215f1b4feb1"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-banter240--tado_hijack"
+repo = "banter240/tado_hijack"
+commit = "c2892a75c58404c76d71c6b46900289cfb39d65a"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-mannotfood--healthsync"
+repo = "mannotfood/healthsync"
+commit = "e76c1ad020bbe227db9d96cc1b95e4c003509cbe"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-volschin--gq_gmc-500"
+repo = "volschin/gq_gmc-500"
+commit = "51486bc5e5ade764b6cb2b99c0c6cc46c2278a00"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-remmob--itho_amber"
+repo = "remmob/itho_amber"
+commit = "0f12bac3e935e064a0c5f3d634396a958be3e48a"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-thokaro--solarwatt-manager-homeassistant"
+repo = "thokaro/solarwatt-manager-homeassistant"
+commit = "9508ee4ba26df8a900cd4478fd1489a1c1682289"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-sunbox--radpro-home-assistant-plugin"
+repo = "SunboX/radpro-home-assistant-plugin"
+commit = "7e0e7d09520be4ae58191f6b5307f9777210f47e"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-lasswellt--govee-homeassistant"
+repo = "lasswellt/govee-homeassistant"
+commit = "40d5bd8b43f7008ab4db5471177facb3eb847510"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-gregoryduckworth--googlegeocode-hass"
+repo = "gregoryduckworth/GoogleGeocode-HASS"
+commit = "c33911fc632b635b974b94a0eddb12db8554641e"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-niktest--solaredge_ev_charger_au"
+repo = "niktest/solaredge_ev_charger_au"
+commit = "0bae61643504c09ff493ac88f9c3c9bd5c2de14d"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-ulf-tallmyr--ha-vasttrafik"
+repo = "ulf-tallmyr/ha-vasttrafik"
+commit = "4b193a5b061c7262e706f41ceb3813e406a559e4"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-krasnoukhov--homeassistant-nova-poshta"
+repo = "krasnoukhov/homeassistant-nova-poshta"
+commit = "173466c1a1ae6bdd70c16d7bcece65b76ce175ba"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-gvigroux--hon"
+repo = "gvigroux/hon"
+commit = "cbc0376463b6d0842860f118d63a9fc92adcf04e"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-moerk-o--whenhub"
+repo = "moerk-o/WhenHub"
+commit = "a9e95798b4637550601cc69c19552fc66bfc59ea"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-imhotep--hass-unifi-access"
+repo = "imhotep/hass-unifi-access"
+commit = "a1160ca6d12d2ab38f6fd47dccd799ac48824ac6"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-kramttocs--ha-gluetun"
+repo = "kramttocs/ha-gluetun"
+commit = "cbbae466e7843c0d898d85832caff8ec32d7cb78"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-cloudless-garden--ha-gardena-smart-local-preview"
+repo = "cloudless-garden/ha-gardena-smart-local-preview"
+commit = "a2120636b644bbf50d73a62557a00076a488dbf7"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-crillebaba--ha-podcast-feed"
+repo = "CrilleBaba/ha-podcast-feed"
+commit = "89e617ed7f9befeb5b446f022ebd710b494a7749"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-jesserockz--ha-leafspy"
+repo = "jesserockz/ha-leafspy"
+commit = "637075cbd761965aa2868ccecb77959c13260bf9"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-maxfok--nimbus-climate-scheduler"
+repo = "maxfok/nimbus-climate-scheduler"
+commit = "f21849b2b818c83c4e29afe6bffbc03456f5bd73"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-jxlarrea--ha-emfitqs"
+repo = "jxlarrea/ha-emfitqs"
+commit = "588f80e75656b6a14c0c648cb4e48d4d5f14b11a"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-tomer-w--ha-victron-mqtt"
+repo = "tomer-w/ha-victron-mqtt"
+commit = "5b7261b049a7fc3e85046f8e3ce87ff253e93523"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-somansch--lufop_radar"
+repo = "somansch/lufop_radar"
+commit = "2824ba2978b134378d9077fceee63b174161d505"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-roblencheg--haval_h3"
+repo = "roblencheg/HAVAL_H3"
+commit = "ec05e6dc18436510e435addaa0af99d888d51b77"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-wiso--home-assistant-arpa-lombardia"
+repo = "wiso/home-assistant-arpa-lombardia"
+commit = "99e1d4e088a423998555ff20b291b89bdb5b7ff4"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-kgn3400--docker_status"
+repo = "kgn3400/docker_status"
+commit = "6d8be28db86baee9a20a16254b655e3ad3a1fb4c"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-elden1337--hass-peaqnext"
+repo = "elden1337/hass-peaqnext"
+commit = "cd99ba62b743bb720cd9e88cd040b32d3d937b8f"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-dxmnkd316--ha-scheduled-helpers"
+repo = "dxmnkd316/ha-scheduled-helpers"
+commit = "5152d5f3639541d720674ec04ebfd3dd54f57514"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-hb9dut--hatoaprs"
+repo = "HB9DUT/HAtoAPRS"
+commit = "a78c1df1b5e4f2227062c52272309dbc0ef70a6d"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-golles--ha-knmi"
+repo = "golles/ha-knmi"
+commit = "08101a32255b9301992c7279f5eb81aaf76db2a5"
+kind = "reference"
+
+[[case]]
+id = "ref-integration-amaximus--met_alerts_hu"
+repo = "amaximus/met_alerts_hu"
+commit = "c898bbb86959add60299414b848ab24ec3fd316c"
+kind = "reference"
+
+[[case]]
+id = "ref-card-wilsto--pool-monitor-card"
+repo = "wilsto/pool-monitor-card"
+commit = "83f7400949cf02936c7477b384be64066146aedc"
+kind = "reference"
+
+[[case]]
+id = "ref-card-danchaltiel--heatzy-pilote-card"
+repo = "DanChaltiel/heatzy-pilote-card"
+commit = "94a7be3f4b8976cd66498d7a5eb21cc00cecfedc"
+kind = "reference"
+
+[[case]]
+id = "ref-card-benct--lovelace-multiple-entity-row"
+repo = "benct/lovelace-multiple-entity-row"
+commit = "c0bd66e6199c7efcfc50c1bd1bcd87fc88fbe9a8"
+kind = "reference"
+
+[[case]]
+id = "ref-card-xbourner--area-card-plus"
+repo = "xBourner/area-card-plus"
+commit = "fc6dfb5e5c4f95b474a4cadf4493fc661876c250"
+kind = "reference"
+
+[[case]]
+id = "ref-card-dennisdebest--hatodokanbancard"
+repo = "DennisdeBest/HaTodoKanbanCard"
+commit = "357541a68b2470258dbc991a7b1034f935773df2"
+kind = "reference"
+
+[[case]]
+id = "ref-card-hudint--split-button-card"
+repo = "Hudint/split-button-card"
+commit = "8178db39b5b8559aa52189fb7c188e6b8f9a46ed"
+kind = "reference"
+
+[[case]]
+id = "ref-card-custom-cards--surveillance-card"
+repo = "custom-cards/surveillance-card"
+commit = "4f9ead3d9b28897c79d95095a4d488a0f476a9f8"
+kind = "reference"
+
+[[case]]
+id = "ref-card-cangos655--vehicle-card"
+repo = "Cangos655/vehicle-card"
+commit = "a546e8888413d1023c0e372de8a26edc0b4189f4"
+kind = "reference"
+
+[[case]]
+id = "ref-card-springvar--home-assistant-flightradar24-card"
+repo = "Springvar/home-assistant-flightradar24-card"
+commit = "693cc366e64807a5f43ef49bb2fb2de67b961c59"
+kind = "reference"
+
+[[case]]
+id = "ref-card-mariusthvdb--custom-more-info"
+repo = "Mariusthvdb/custom-more-info"
+commit = "2f8129e94140c988d8157da63699f02e3ea15915"
+kind = "reference"
+
+[[case]]
+id = "ref-card-johro897--ourgroceries-shopping-card"
+repo = "johro897/ourgroceries-shopping-card"
+commit = "2e605c00c05fd6d00a118024eab4d00f57929f70"
+kind = "reference"
+
+[[case]]
+id = "ref-card-finity69x2--light-brightness-preset-row"
+repo = "finity69x2/light-brightness-preset-row"
+commit = "db0595204bc846f38c56399861aac48442871e66"
+kind = "reference"
+
+[[case]]
+id = "ref-card-giorgioparri--lektrico-charger-card"
+repo = "giorgioparri/lektrico-charger-card"
+commit = "1612ca4fd0eb060d6d5fac7edefc8c05cc62ea5b"
+kind = "reference"
+
+[[case]]
+id = "ref-card-rusty4444--recently-added-media-card"
+repo = "rusty4444/recently-added-media-card"
+commit = "b64617f8c1115aa3f6edad7183ae5d60327cdab7"
+kind = "reference"
+
+[[case]]
+id = "ref-card-amaximus--pollen-hu-card"
+repo = "amaximus/pollen-hu-card"
+commit = "61de905dde5aac6a2b8936290fbd664d98b51bb1"
+kind = "reference"
+
+[[case]]
+id = "ref-card-nisbo--ha-shopping-list-improved"
+repo = "Nisbo/ha-shopping-list-improved"
+commit = "b0f510c7463b0854175cf84374f3104f98e92490"
+kind = "reference"
+
+[[case]]
+id = "ref-card-hudsonbrendon--nintendo-switch-card"
+repo = "hudsonbrendon/nintendo-switch-card"
+commit = "86a72984b0c9fb3caa5bd1f0e147ccbd9c12e395"
+kind = "reference"
+
+[[case]]
+id = "ref-card-nathanmarlor--foxess_modbus_charge_period_card"
+repo = "nathanmarlor/foxess_modbus_charge_period_card"
+commit = "930203a2e061910a0ddfad8828ed34d7c0d3b1c0"
+kind = "reference"
+
+[[case]]
+id = "ref-card-vineetchoudhary--lovelace-docker-card"
+repo = "vineetchoudhary/lovelace-docker-card"
+commit = "768e708f77b31fbb5de35bf94fb426d1472c04b8"
+kind = "reference"
+
+[[case]]
+id = "ref-card-hypfer--lovelace-valetudo-map-card"
+repo = "Hypfer/lovelace-valetudo-map-card"
+commit = "a4d8de582286c3bb95cd7e7cbbd7adfb8dff6fad"
+kind = "reference"

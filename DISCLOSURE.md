@@ -26,8 +26,9 @@ without the details an attacker would need.
 
 ## What stays out of public view until then
 
-- The benchmark corpus in this repository only holds bugs whose fix has shipped.
-  Cases still under embargo live in a private corpus outside the repository.
+- The benchmark corpus in this repository only holds bugs whose fix has shipped;
+  its loader refuses a vulnerable case without one. Cases still under embargo
+  live in a private corpus outside the repository.
 - Pull requests, CI output, the results feed and posts don't name a project
   with an unfixed problem, or give its file and line.
 - Scans of projects shared on forums or Reddit that turn up a problem follow the
