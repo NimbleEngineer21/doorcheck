@@ -103,6 +103,7 @@ layers = [
     "doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
     "doorcheck.capabilities",
+    "doorcheck.dependencies",
     "doorcheck.pypi",
     "doorcheck.checks | doorcheck.requirements | doorcheck.https",
     "doorcheck.findings | doorcheck.errors | doorcheck.tree | doorcheck.text",
@@ -114,6 +115,7 @@ type = "forbidden"
 source_modules = [
     "doorcheck.capabilities",
     "doorcheck.checks",
+    "doorcheck.dependencies",
     "doorcheck.errors",
     "doorcheck.fetch",
     "doorcheck.findings",
