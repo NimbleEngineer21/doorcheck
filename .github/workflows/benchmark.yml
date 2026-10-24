@@ -1,0 +1,40 @@
+name: Benchmark
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "benchmark/**"
+      - "tools/benchmark.py"
+      - "tools/corpus.py"
+  schedule:
+    - cron: "41 7 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  corpus:
+    name: corpus health
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # check out the corpus definition; nothing else
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4"
+          enable-cache: false
+      - run: uv sync --locked
+      # Fetches every case at its pinned commit and scores a scanner that reports
+      # nothing, so a broken or vanished pin fails here. Corpus code never runs.
+      - name: Fetch and score every pinned case
+        run: uv run python -m tools.benchmark tools.benchmark:no_findings --markdown "$RUNNER_TEMP/summary.md"
+      - name: Show the summary
+        run: cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
