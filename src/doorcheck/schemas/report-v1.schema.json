@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json",
+  "title": "Doorcheck report, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "doorcheck_version",
+    "target",
+    "checks",
+    "capabilities",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "doorcheck_version": {
+      "type": "string"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "commit",
+        "artifact_sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifact_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/check"
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capability"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "severity",
+        "confidence",
+        "location",
+        "message_key",
+        "tool",
+        "cwe",
+        "evidence",
+        "params",
+        "fingerprint"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+([./-][a-z0-9]+)*$"
+        },
+        "severity": {
+          "enum": [
+            "serious",
+            "review",
+            "notice",
+            "info"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "message_key": {
+          "$ref": "#/$defs/key"
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cwe": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "evidence": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300
+        },
+        "params": {
+          "$ref": "#/$defs/params"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "line",
+        "column"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      }
+    },
+    "params": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)+$"
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "status",
+        "problems"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "partial",
+            "nothing_to_scan",
+            "failed"
+          ]
+        },
+        "problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/problem"
+          }
+        }
+      }
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "location",
+        "params"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "location": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/location"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "params": {
+          "$ref": "#/$defs/params"
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "location",
+        "subject",
+        "attrs"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "process",
+            "system_module",
+            "network_host",
+            "file_access",
+            "file_write",
+            "ha_auth",
+            "ha_config_entries",
+            "ha_http_middleware",
+            "ha_private_file",
+            "ha_service_call",
+            "web_view",
+            "replaces_code",
+            "env_read",
+            "date_check",
+            "dynamic_import",
+            "dynamic_attribute",
+            "dynamic_code",
+            "decode",
+            "deserialize",
+            "native_code",
+            "bidi_control",
+            "confusable_name",
+            "shipped_binary",
+            "dependency",
+            "dependency_outside_pypi",
+            "symlink"
+          ]
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "attrs": {
+          "$ref": "#/$defs/params"
+        }
+      }
+    }
+  }
+}
