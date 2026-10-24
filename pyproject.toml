@@ -96,9 +96,19 @@ source_modules = ["doorcheck"]
 forbidden_modules = ["homeassistant"]
 
 [[tool.importlinter.contracts]]
+name = "Each layer builds only on the layers below it"
+type = "layers"
+layers = [
+    "doorcheck.checks",
+    "doorcheck.findings | doorcheck.errors",
+]
+
+[[tool.importlinter.contracts]]
 name = "Only the adapters run other programs"
 type = "forbidden"
 source_modules = [
+    "doorcheck.checks",
+    "doorcheck.errors",
     "doorcheck.findings",
 ]
 forbidden_modules = ["subprocess", "doorcheck.adapters"]
