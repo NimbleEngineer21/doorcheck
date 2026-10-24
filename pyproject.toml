@@ -95,6 +95,14 @@ type = "forbidden"
 source_modules = ["doorcheck"]
 forbidden_modules = ["homeassistant"]
 
+[[tool.importlinter.contracts]]
+name = "Only the adapters run other programs"
+type = "forbidden"
+source_modules = [
+    "doorcheck.findings",
+]
+forbidden_modules = ["subprocess", "doorcheck.adapters"]
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 tag_format = "v$version"
