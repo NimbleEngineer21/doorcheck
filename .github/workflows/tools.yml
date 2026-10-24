@@ -1,0 +1,50 @@
+name: Scanning tools
+
+# The adapter tests read output recorded from the pinned tools. This runs the
+# real tools again and checks the adapters still read what they print, so a
+# change in a tool, or in the advisories it reports, shows up here first.
+on:
+  schedule:
+    - cron: "23 5 * * 2"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  record:
+    name: re-record and test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # check out the fixtures; nothing else
+    timeout-minutes: 30
+    env:
+      OSV_VERSION: v2.7.0
+      OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4"
+          enable-cache: false
+      - run: uv sync --locked
+      - name: Install the pinned tools
+        run: |
+          for adapter in semgrep:Semgrep zizmor:Zizmor guarddog:GuardDog; do
+            module="${adapter%%:*}" class="${adapter##*:}"
+            version="$(uv run python -c "from doorcheck.adapters.$module import $class; print($class.version)")"
+            uv tool install "$module==$version"
+          done
+          curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+      - name: Record and test
+        run: |
+          PATH="$RUNNER_TEMP:$(uv tool dir --bin):$PATH" uv run python -m tools.record_tool_output
+          uv run pytest tests/test_adapters_recorded.py --no-cov
