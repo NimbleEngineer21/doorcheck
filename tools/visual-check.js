@@ -12,7 +12,8 @@
     const rtl = getComputedStyle(row.closest("section")).direction === "rtl";
     const separated = rtl ? iconBox.left >= textBox.right : iconBox.right <= textBox.left;
     if (!separated) failures.push("state order");
-    if (!label.textContent.trim() || mark.getAttribute("aria-hidden") !== "true") {
+    const visible = label.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+    if (!visible || !label.textContent.trim() || mark.getAttribute("aria-hidden") !== "true") {
       failures.push("state label");
     }
   }

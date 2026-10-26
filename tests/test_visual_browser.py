@@ -51,6 +51,9 @@ def test_states_render_without_overflow_and_follow_direction(
         ("document.querySelector('.rtl .state').style.direction = 'ltr'", "state order"),
         ("document.querySelector('bdi').style.unicodeBidi = 'normal'", "source isolation"),
         ("document.querySelector('h3').textContent = ''", "state label"),
+        ("document.querySelector('h3').style.display = 'none'", "state label"),
+        ("document.querySelector('h3').style.visibility = 'hidden'", "state label"),
+        ("document.querySelector('h3').style.opacity = '0'", "state label"),
         ("document.body.style.minWidth = '1500px'", "overflow"),
     ],
 )
