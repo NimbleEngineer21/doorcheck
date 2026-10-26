@@ -46,6 +46,10 @@ jobs:
           echo "${OSV_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum --check --strict
           chmod +x "$RUNNER_TEMP/osv-scanner"
       - name: Record and test
+        env:
+          DOORCHECK_LIVE_FIXTURES: ${{ runner.temp }}/scanner-fixtures
         run: |
-          PATH="$RUNNER_TEMP:$(uv tool dir --bin):$PATH" uv run python -m tools.record_tool_output
-          uv run pytest tests/test_adapter_semgrep.py tests/test_adapter_zizmor.py tests/test_adapter_osv.py tests/test_adapter_guarddog.py --no-cov
+          mkdir -p "$DOORCHECK_LIVE_FIXTURES"
+          cp -R tests/fixtures/integrations tests/fixtures/semgrep "$DOORCHECK_LIVE_FIXTURES/"
+          PATH="$RUNNER_TEMP:$(uv tool dir --bin):$PATH" uv run python -m tools.record_tool_output --fixtures "$DOORCHECK_LIVE_FIXTURES"
+          uv run pytest tests/test_adapters_live.py --no-cov

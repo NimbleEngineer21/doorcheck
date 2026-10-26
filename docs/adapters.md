@@ -59,8 +59,11 @@ uv run pytest
 ```
 
 A changed output format shows up as a failing test instead of a silently wrong
-scan. The `Scanning tools` workflow does the same every week with the pinned
-tools, so drift shows up without waiting for a bump. Recordings can't be compared
+scan. The `Scanning tools` workflow records fresh output in a temporary fixture folder
+every week, then runs `tests/test_adapters_live.py` against it. Those contract
+checks verify detections and coverage gaps while allowing current DNS/advisory
+results to differ from the immutable unit-test snapshots. Scanner tools run in
+isolated Python 3.13 environments for their pinned native dependencies. Recordings can't be compared
 byte for byte: Semgrep includes timings and the dependency tools include
 temporary paths.
 
