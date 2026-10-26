@@ -114,7 +114,7 @@ def test_tools_get_a_clean_environment(tmp_path: Path, monkeypatch: pytest.Monke
     assert Path(env["HOME"]).is_absolute()
     assert not Path(env["HOME"]).exists()  # a scratch HOME, removed afterwards
     # Python itself may add LC_CTYPE when it starts.
-    assert set(env) - {"LC_CTYPE"} == {*KEPT, "HOME", "NO_COLOR"}
+    assert set(env) - {"LC_CTYPE", "__CF_USER_TEXT_ENCODING"} == {*KEPT, "HOME", "NO_COLOR"}
 
 
 def test_the_version_check_runs_the_same_way(
@@ -441,3 +441,156 @@ def test_a_broken_plugin_is_reported_without_stopping_the_others() -> None:
 def test_a_plugin_without_a_name_is_reported() -> None:
     loaded = load((point("nameless", "builtins:object"),))
     assert loaded.problems == {"nameless": "adapter calls itself None"}
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "import sys; sys.stdout.write('x'*1001)",
+        "import sys; sys.stderr.write('x'*1001)",
+        "import sys; sys.stdout.write('x'*600); sys.stderr.write('y'*600)",
+    ],
+)
+def test_output_limits_fail_the_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, script: str
+) -> None:
+    monkeypatch.setattr("doorcheck.adapters.base.MAX_OUTPUT_BYTES", 1000)
+    assert failure(run(FakeTool(script), at(tmp_path))) == (
+        "problem.tool_output_too_large",
+        "fake output exceeds 1000 bytes",
+    )
+
+
+def test_output_at_the_limit_is_preserved(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("doorcheck.adapters.base.MAX_OUTPUT_BYTES", 1000)
+    assert raw_output(FakeTool("print('x'*999)"), at(tmp_path)) == b"x" * 999 + b"\n"
+
+
+@pytest.mark.parametrize("error", [PermissionError("blocked"), OSError("bad executable")])
+def test_operating_system_failures_are_failed_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: OSError
+) -> None:
+    def refuse(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr("doorcheck.adapters.base.capture", refuse)
+    assert failure(run(FakeTool(), at(tmp_path))) == ("problem.tool_failed", str(error))
+
+
+@pytest.mark.parametrize(
+    "error", [StopIteration("no primary location"), RecursionError("nested output")]
+)
+def test_malformed_nested_tool_output_fails_the_check(tmp_path: Path, error: Exception) -> None:
+    class Broken(FakeTool):
+        def parse(self, output: bytes, scan: ScanInput) -> Parsed:
+            raise error
+
+    key, detail = failure(run(Broken(), at(tmp_path)))
+    assert key == "problem.tool_output_not_understood"
+    assert detail == f"fake output not understood: {error!r}"
+
+
+def test_timeout_applies_after_a_tool_closes_both_output_streams(tmp_path: Path) -> None:
+    script = "import os,time; os.close(1); os.close(2); time.sleep(5)"
+    assert failure(run(FakeTool(script), at(tmp_path), timeout=0.5)) == (
+        "problem.tool_timed_out",
+        "fake took longer than 0.5 seconds",
+    )
+
+
+def test_timed_out_descendants_are_stopped(tmp_path: Path) -> None:
+    import time
+
+    marker = tmp_path / "child-ran"
+    child = f"import time; time.sleep(1); open({str(marker)!r}, 'w').write('ran')"
+    script = (
+        f"import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',{child!r}]); "
+        "time.sleep(5)"
+    )
+    assert failure(run(FakeTool(script), at(tmp_path), timeout=0.5))[0] == "problem.tool_timed_out"
+    time.sleep(1)
+    assert not marker.exists()
+
+
+def test_a_noisy_version_check_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("doorcheck.adapters.base.MAX_OUTPUT_BYTES", 100)
+    assert failure(run(FakeTool(reported="x" * 101), at(tmp_path))) == (
+        "problem.tool_output_too_large",
+        "fake output exceeds 100 bytes",
+    )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("version", None),
+        ("version", ""),
+        ("executable", None),
+        ("executable", ""),
+        ("version_command", None),
+        ("command", "not callable"),
+        ("parse", None),
+    ],
+)
+def test_incomplete_plugin_contracts_are_rejected(
+    field: str, value: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def construct():
+        tool = Proper()
+        setattr(tool, field, value)
+        return tool
+
+    monkeypatch.setattr(EntryPoint, "load", lambda self: construct)
+    loaded = load((point("proper", "tests.test_adapters_runner:Proper"),))
+    expected = (
+        f"adapter has no valid {field}"
+        if field in ("version", "executable")
+        else f"adapter has no callable {field}"
+    )
+    assert loaded.adapters == {}
+    assert loaded.problems == {"proper": expected}
+
+
+def test_dependency_inputs_use_the_exact_filename_passed_to_tools(tmp_path: Path) -> None:
+    from doorcheck.adapters.guarddog import GuardDogDependencies
+    from doorcheck.adapters.osv import OsvScanner
+
+    dependencies = Dependencies((Pin(PypiRequirement("a", "==1"), 1),))
+    scan = ScanInput(tmp_path, dependencies)
+    for adapter in (OsvScanner(), GuardDogDependencies()):
+        work = tmp_path / adapter.name
+        work.mkdir()
+        command = adapter.command(scan, work)
+        assert isinstance(command, Command)
+        assert "requirements.txt" in command.argv
+        assert [p.name for p in work.iterdir()] == ["requirements.txt"]
+
+
+@pytest.mark.parametrize(
+    "missing", ["version", "executable", "version_command", "command", "parse"]
+)
+def test_missing_plugin_attributes_have_specific_diagnostics(
+    missing: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    fields = {
+        "name": "proper",
+        "audience": Audience.USERS,
+        "experimental": False,
+        "version": "1",
+        "executable": "tool",
+        "version_command": lambda: (),
+        "command": lambda: None,
+        "parse": lambda: None,
+    }
+    del fields[missing]
+    monkeypatch.setattr(EntryPoint, "load", lambda self: lambda: SimpleNamespace(**fields))
+    loaded = load((point("proper", "unused"),))
+    expected = (
+        f"adapter has no valid {missing}"
+        if missing in ("version", "executable")
+        else f"adapter has no callable {missing}"
+    )
+    assert loaded.adapters == {}
+    assert loaded.problems == {"proper": expected}

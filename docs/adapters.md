@@ -1,9 +1,10 @@
 # Scanning tools
 
 Doorcheck runs other scanners through small adapters in `src/doorcheck/adapters/`.
-An adapter builds one command and reads that command's output. Everything else is
-shared in `base.py`: the timeout, a clean environment with a scratch `HOME`, the
-allowed exit codes and the version check.
+An adapter builds one command and reads that command's output. The runner shares the timeout, a clean environment with a scratch `HOME`,
+allowed exit codes and version checks. On POSIX hosts, tool execution caps combined
+stdout/stderr at 20 MiB and stops the process group when the run ends. Oversized
+output is a failed check, including during version detection.
 
 Every run ends in a check with a status: complete, partial (with the files,
 packages or checks it couldn't cover), nothing to scan, or failed (with why).
@@ -83,13 +84,18 @@ temporary paths.
   ever get requirements rebuilt from a package name and version specifiers
   (`doorcheck/requirements.py`), so a manifest can't pass `-r /etc/passwd` or
   `--index-url` through them.
-- Both dependency tools get each requirement pinned to the version a fresh
-  install gets: the newest non-yanked release its specifiers allow
+- Both dependency tools get a snapshot of each direct requirement pinned to
+  the newest non-yanked release its specifiers allow
   (`doorcheck/pypi.py`), resolved once per scan and shared
   (`doorcheck/dependencies.py`). GuardDog misreads a range with two bounds
   (`>=1.2,<2`) as a version and scans nothing, and OSV-Scanner only reads exact
   pins, so without this most ranges went unchecked. A requirement that can't be
   pinned (not on PyPI, a URL, an installer option) is a problem of each check.
+  This is not a full installation resolver: Home Assistant constraints, target
+  Python/platform compatibility, environment markers and transitive dependencies
+  can change what is installed. Extras are explicitly marked as not covered;
+  conflicting duplicate resolutions are reported rather than choosing one pin.
+  Invalid or unreadable manifests are coverage gaps, not an empty dependency list.
 - `guarddog pypi verify` silently leaves out packages it couldn't download, and
   one missing package doesn't stop it reporting the others. Every package it
   didn't report on is a problem, and so is any check it couldn't run.

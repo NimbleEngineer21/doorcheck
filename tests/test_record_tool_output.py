@@ -31,13 +31,24 @@ class Printer:
         return Parsed()
 
 
-def test_recording_writes_each_tool_and_case(tmp_path: Path) -> None:
+def test_recording_writes_each_tool_and_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = record_tool_output.prepare
+    seen = []
+
+    def prepare(root: Path):
+        seen.append(root.as_posix())
+        return original(root)
+
+    monkeypatch.setattr(record_tool_output, "prepare", prepare)
     cases = ("one", "skipped", "two")
     for case in cases:
         (tmp_path / "integrations" / case).mkdir(parents=True)
     written = record_tool_output.record([Printer(), Printer()], tmp_path, cases)
     one, two = f"{tmp_path}/tools/printer/one.json", f"{tmp_path}/tools/printer/two.json"
     assert written == [one, two, one, two]
+    assert seen == [f"{tmp_path}/integrations/{case}" for case in cases] * 2
     assert json.loads((tmp_path / "tools/printer/one.json").read_text()) == [1]
 
 

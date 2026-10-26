@@ -297,3 +297,11 @@ def test_semgrep_scanned_the_file_hidden_by_semgrepignore() -> None:
 
 def test_semgrep_on_clean_code() -> None:
     assert Semgrep().parse(recorded("semgrep", "clean"), as_recorded(CLEAN)) == Parsed()
+
+
+def test_evidence_reading_has_a_byte_ceiling(tmp_path: Path) -> None:
+    from doorcheck.adapters.semgrep import _lines
+
+    path = tmp_path / "large.py"
+    path.write_bytes(b"\n" * 2_000_000 + b"beyond the evidence budget")
+    assert _lines(path, 2_000_001, 2_000_001) is None

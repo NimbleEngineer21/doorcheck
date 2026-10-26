@@ -105,6 +105,8 @@ class GuardDogDependencies:
 def _package_results(
     result: Any, tool: str, here: Location, about: dict[str, str]
 ) -> tuple[list[Finding], list[Problem]]:
+    if "results" not in result and not result["errors"]:
+        raise ValueError("guarddog reported neither results nor errors")
     findings = []
     for rule, matches in sorted(result.get("results", {}).items()):  # absent if not downloaded
         if isinstance(matches, list):

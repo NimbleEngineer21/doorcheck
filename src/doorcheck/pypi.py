@@ -39,12 +39,16 @@ class PackageIndexError(DoorcheckError):
 def newest_version(requirement: PypiRequirement, get: Get = pypi_get) -> str:
     """The newest release the requirement allows. Raises a DoorcheckError when that
     can't be known: offline, not on PyPI, an unreadable index, or no matching release."""
-    if pinned := requirement.pinned_version:
-        return pinned
+    try:
+        specifiers = SpecifierSet(requirement.specifiers)
+        if pinned := requirement.pinned_version:
+            return str(Version(pinned))
+    except ValueError as error:
+        raise PackageIndexError(f"invalid requirement for {requirement.name}: {error}") from error
     data = get(f"https://pypi.org/pypi/{quote(requirement.name)}/json")
     try:
         releases = _releases(json.loads(data)["releases"])
-        matching = list(SpecifierSet(requirement.specifiers).filter(releases))
+        matching = list(specifiers.filter(releases))
     except (ValueError, KeyError, TypeError, AttributeError, RecursionError) as error:
         raise PackageIndexError(f"unreadable index for {requirement.name}: {error!r}") from error
     if not matching:

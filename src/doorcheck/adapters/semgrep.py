@@ -31,7 +31,7 @@ from doorcheck.adapters.base import (
 )
 from doorcheck.checks import Problem
 from doorcheck.findings import Confidence, Finding, Location, Severity, evidence, param
-from doorcheck.tree import entries
+from doorcheck.tree import entries, read_regular
 
 SEVERITIES = {
     "CRITICAL": Severity.SERIOUS,
@@ -139,7 +139,7 @@ def _cwe(value: object) -> int | None:
 
 def _lines(path: Path, first: int, last: int) -> str | None:
     try:
-        lines = path.read_bytes().decode(errors="replace").splitlines()
+        lines = read_regular(path, 2_000_000).decode(errors="replace").splitlines()
     except OSError:
         return None
     return evidence("\n".join(lines[first - 1 : last])) or None

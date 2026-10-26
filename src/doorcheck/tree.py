@@ -57,3 +57,12 @@ def read_json_object(path: Path) -> dict[str, object] | None:
     except OSError:
         return None
     return json_object(data)
+
+
+def read_regular(path: Path, limit: int) -> bytes:
+    """Read at most limit bytes, refusing links and nonregular files without blocking."""
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "rb") as handle:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            raise OSError(f"not a regular file: {path}")
+        return handle.read(limit)

@@ -300,3 +300,9 @@ def test_guarddog_dependencies_reports_every_gap() -> None:
 
 def test_guarddog_dependencies_had_nothing_to_look_at_in_the_clean_fixture() -> None:
     assert not (UNSAFE.parent.parent / "tools" / "guarddog-dependencies" / "clean.json").exists()
+
+
+def test_a_package_with_neither_results_nor_errors_is_not_a_clean_check(tmp_path: Path) -> None:
+    item = {"dependency": "a", "version": "1", "result": {"errors": {}}}
+    with pytest.raises(ValueError, match=r"^guarddog reported neither results nor errors$"):
+        GuardDogDependencies().parse(dump([item]), at(tmp_path, Dependencies(PINS[:1])))

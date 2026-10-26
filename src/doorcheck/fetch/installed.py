@@ -7,9 +7,7 @@ difference between the release zip and the source is listed.
 """
 
 import hashlib
-import os
 import re
-import stat
 from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
@@ -20,7 +18,7 @@ from doorcheck.fetch.errors import FetchError
 from doorcheck.fetch.marketplace import hacs_manifest, source_folder
 from doorcheck.fetch.transport import Get, https_get
 from doorcheck.report import Target
-from doorcheck.tree import entries, json_object
+from doorcheck.tree import entries, json_object, read_regular
 
 REPO = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9_.-]+")
 TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+/-]*")
@@ -123,11 +121,7 @@ def _tree_digest(root: Path) -> str:
 
 
 def _file_bytes(path: Path, limit: int) -> bytes:
-    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-    with os.fdopen(descriptor, "rb") as handle:
-        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-            raise OSError(f"not a regular file: {path}")
-        data = handle.read(limit + 1)
+    data = read_regular(path, limit + 1)
     if len(data) > limit:
         raise FetchError("folder exceeds byte limit")
     return data

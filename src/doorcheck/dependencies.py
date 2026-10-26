@@ -17,11 +17,13 @@ from doorcheck.requirements import (
     Manifest,
     PypiRequirement,
     normalized,
+    parse_manifest,
     pypi_requirement,
-    read_manifest,
 )
+from doorcheck.tree import read_regular
 
 MANIFEST = "manifest.json"
+MAX_MANIFEST_BYTES = 2_000_000
 # Far above any real manifest; each requirement costs a download from PyPI.
 MAX_REQUIREMENTS = 200
 
@@ -46,18 +48,61 @@ class Dependencies:
 
 
 def resolve(root: Path, resolve_one: Resolve = newest_version) -> Dependencies:
-    manifest = read_manifest(root / MANIFEST)
-    if manifest is None or not manifest.requirements:
+    manifest = _manifest(root)
+    if isinstance(manifest, Unresolved):
+        return Dependencies(unresolved=(manifest,))
+    if manifest is None:
         return Dependencies()
-    pins: dict[str, Pin] = {}  # a package listed twice installs once: the first one counts
+    pins: dict[str, Pin] = {}
     unresolved: list[Unresolved] = []
-    for index, item in enumerate(manifest.requirements):
+    conflicts: set[str] = set()
+    for index, item in enumerate(manifest.requirements or ()):
         result = _one(item, index, manifest, resolve_one)
         if isinstance(result, Unresolved):
             unresolved.append(result)
         else:
-            pins.setdefault(normalized(result.requirement.name), result)
+            _add_pin(pins, conflicts, unresolved, result, str(item))
     return Dependencies(tuple(pins.values()), tuple(unresolved))
+
+
+def _add_pin(
+    pins: dict[str, Pin],
+    conflicts: set[str],
+    unresolved: list[Unresolved],
+    result: Pin,
+    written: str,
+) -> None:
+    name = normalized(result.requirement.name)
+    previous = pins.get(name)
+    if name in conflicts or (
+        previous and previous.requirement.specifiers != result.requirement.specifiers
+    ):
+        conflicts.add(name)
+        pins.pop(name, None)
+        unresolved.append(Unresolved(written, result.line, "problem.conflicting_requirements"))
+    else:
+        pins.setdefault(name, result)
+    if "[" in written:
+        unresolved.append(
+            Unresolved(written, result.line, "problem.requirement_extras_not_checked")
+        )
+
+
+def _manifest(root: Path) -> Manifest | Unresolved | None:
+    try:
+        data = read_regular(root / MANIFEST, MAX_MANIFEST_BYTES + 1)
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return Unresolved(MANIFEST, 1, "problem.manifest_not_readable")
+    if len(data) > MAX_MANIFEST_BYTES:
+        return Unresolved(MANIFEST, 1, "problem.file_too_large")
+    manifest = parse_manifest(data)
+    if manifest is None:
+        return Unresolved(MANIFEST, 1, "problem.manifest_not_parsed")
+    if manifest.requirements is None:
+        return Unresolved(MANIFEST, 1, "problem.requirements_not_list")
+    return manifest
 
 
 def _one(item: object, index: int, manifest: Manifest, resolve_one: Resolve) -> Pin | Unresolved:

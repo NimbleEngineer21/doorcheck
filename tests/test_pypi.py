@@ -121,3 +121,12 @@ def test_a_deeply_nested_index_is_an_error_not_a_crash() -> None:
 def test_skipped_releases_dont_hide_the_ones_after_them() -> None:
     get = FakePypi({"9.0": YANKED, "8.0": [], "bad version": FILE, "1.5": FILE})
     assert newest_version(PypiRequirement("pkg", ""), get) == "1.5"
+
+
+@pytest.mark.parametrize("specifiers", ["==not-a-version", ">=nonsense"])
+def test_invalid_versions_are_keyed_errors(specifiers: str) -> None:
+    get = FakePypi({})
+    with pytest.raises(PackageIndexError, match="invalid requirement for pkg") as error:
+        newest_version(PypiRequirement("pkg", specifiers), get)
+    assert error.value.key == "problem.package_index_unreadable"
+    assert get.requested == []

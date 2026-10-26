@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from doorcheck.adapters import Audience, Parsed, load
+from doorcheck.adapters import Audience, Command, Parsed, load
 from doorcheck.adapters.zizmor import Zizmor
 from doorcheck.findings import Confidence, Location, Severity
 from tests.adapters_support import (
@@ -140,3 +140,30 @@ def test_zizmor_ignores_the_scanned_repos_own_config_and_ignore_comments() -> No
 
 def test_zizmor_had_nothing_to_look_at_in_the_clean_fixture() -> None:
     assert not (UNSAFE.parent.parent / "tools" / "zizmor" / "clean.json").exists()
+
+
+def test_workflow_lookup_uses_githubs_exact_folder_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_dir = Path.is_dir
+    original_glob = Path.rglob
+    seen = []
+
+    def is_dir(path: Path):
+        seen.append(path.name)
+        return original_dir(path)
+
+    def rglob(path: Path, pattern: str):
+        seen.append(path.name)
+        return original_glob(path, pattern)
+
+    folder = tmp_path / ".github"
+    folder.mkdir()
+    (folder / "workflow.yml").write_text("jobs: {}")
+    monkeypatch.setattr(Path, "is_dir", is_dir)
+    monkeypatch.setattr(Path, "rglob", rglob)
+    tool = Zizmor()
+    assert isinstance(tool.command(at(tmp_path), tmp_path), Command)
+    with pytest.raises(ValueError, match="audited nothing"):
+        tool.parse(b"", at(tmp_path))
+    assert seen == [".github", ".github"]

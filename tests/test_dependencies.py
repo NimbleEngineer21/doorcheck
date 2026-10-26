@@ -83,9 +83,7 @@ def test_requirements_past_the_limit_arent_resolved(tmp_path: Path) -> None:
     assert MAX_REQUIREMENTS == 200
 
 
-@pytest.mark.parametrize(
-    "content", [None, "{broken", '{"requirements": "a"}', '{"requirements": []}']
-)
+@pytest.mark.parametrize("content", [None, '{"requirements": []}'])
 def test_no_usable_requirements_means_nothing_to_resolve(
     tmp_path: Path, content: str | None
 ) -> None:
@@ -114,3 +112,96 @@ def test_an_unresolved_requirement_is_a_problem_at_its_line() -> None:
         Location("manifest.json", 4),
         {"requirement": "x" * 199 + "…"},
     )
+
+
+@pytest.mark.parametrize(
+    ("data", "key"),
+    [
+        ("{broken", "problem.manifest_not_parsed"),
+        ('{"requirements":"a"}', "problem.requirements_not_list"),
+    ],
+)
+def test_unreadable_dependency_declarations_are_coverage_gaps(
+    tmp_path: Path, data: str, key: str
+) -> None:
+    (tmp_path / "manifest.json").write_text(data)
+    assert resolve(tmp_path, Resolver({})) == Dependencies(
+        unresolved=(Unresolved("manifest.json", 1, key),)
+    )
+
+
+def test_dependency_manifest_special_files_and_links_are_not_read(tmp_path: Path) -> None:
+    import os
+
+    file = tmp_path / "manifest.json"
+    os.mkfifo(file)
+    expected = Dependencies(
+        unresolved=(Unresolved("manifest.json", 1, "problem.manifest_not_readable"),)
+    )
+    assert resolve(tmp_path, Resolver({})) == expected
+    file.unlink()
+    file.symlink_to("/dev/null")
+    assert resolve(tmp_path, Resolver({})) == expected
+
+
+def test_dependency_manifest_read_is_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("doorcheck.dependencies.MAX_MANIFEST_BYTES", 4)
+    (tmp_path / "manifest.json").write_bytes(b"{}    ")
+    assert resolve(tmp_path, Resolver({})) == Dependencies(
+        unresolved=(Unresolved("manifest.json", 1, "problem.file_too_large"),)
+    )
+
+
+def test_inconsistent_duplicate_pins_are_not_presented_as_a_resolved_package(
+    tmp_path: Path,
+) -> None:
+    found = resolve(manifest(tmp_path, ["a==1", "A==2", "a==1"]), Resolver({"a": "1", "A": "2"}))
+    assert found.pins == ()
+    assert found.unresolved == (
+        Unresolved("A==2", 5, "problem.conflicting_requirements"),
+        Unresolved("a==1", 4, "problem.conflicting_requirements"),
+    )
+
+
+def test_equal_duplicate_pins_keep_the_first_location(tmp_path: Path) -> None:
+    found = resolve(manifest(tmp_path, ["a==1", "a==1"]), Resolver({"a": "1"}))
+    assert found == Dependencies((Pin(PypiRequirement("a", "==1"), 4),))
+
+
+def test_extras_are_explicitly_reported_as_unchecked(tmp_path: Path) -> None:
+    found = resolve(manifest(tmp_path, ["a[extra]>=1"]), Resolver({"a": "2"}))
+    assert found.pins == (Pin(PypiRequirement("a", "==2"), 4),)
+    assert found.unresolved == (
+        Unresolved("a[extra]>=1", 4, "problem.requirement_extras_not_checked"),
+    )
+
+
+def test_equivalent_package_names_do_not_create_false_conflicts(tmp_path: Path) -> None:
+    found = resolve(
+        manifest(tmp_path, ["foo-bar==1", "Foo_Bar==1"]), Resolver({"foo-bar": "1", "Foo_Bar": "1"})
+    )
+    assert found == Dependencies((Pin(PypiRequirement("foo-bar", "==1"), 4),))
+
+
+def test_manifest_budget_has_one_overflow_byte_and_includes_its_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from doorcheck import dependencies
+
+    original = dependencies.read_regular
+    seen = []
+
+    def read(path: Path, limit: int):
+        seen.append(limit)
+        return original(path, limit)
+
+    monkeypatch.setattr(dependencies, "MAX_MANIFEST_BYTES", 4)
+    monkeypatch.setattr(dependencies, "read_regular", read)
+    path = tmp_path / "manifest.json"
+    path.write_bytes(b"{}    ")
+    assert resolve(tmp_path).unresolved[0].key == "problem.file_too_large"
+    path.write_bytes(b"{}  ")
+    assert resolve(tmp_path) == Dependencies()
+    assert seen == [5, 5]

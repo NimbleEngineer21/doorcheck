@@ -33,10 +33,11 @@ def load(points: tuple[EntryPoint, ...] | None = None) -> Loaded:
     for point in points if points is not None else tuple(entry_points(group=GROUP)):
         try:
             adapter = point.load()()
+            problem = _problem(adapter, point.name)
         except Exception as error:  # a third-party plugin can fail in any way
             problems[point.name] = f"{type(error).__name__}: {error}"
             continue
-        if problem := _problem(adapter, point.name):
+        if problem:
             problems[point.name] = problem
             continue
         adapters[point.name] = adapter
@@ -51,4 +52,11 @@ def _problem(adapter: object, name: str) -> str:
         return "adapter doesn't say who its results are for (audience)"
     if not isinstance(getattr(adapter, "experimental", None), bool):
         return "adapter doesn't say whether it is experimental"
+    for field in ("version", "executable"):
+        value = getattr(adapter, field, None)
+        if not isinstance(value, str) or not value:
+            return f"adapter has no valid {field}"
+    for method in ("version_command", "command", "parse"):
+        if not callable(getattr(adapter, method, None)):
+            return f"adapter has no callable {method}"
     return ""

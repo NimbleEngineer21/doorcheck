@@ -17,6 +17,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+from doorcheck.adapters.process import OutputLimitError, capture
 from doorcheck.checks import Check, Problem, Status, status_for
 from doorcheck.dependencies import Dependencies, resolve
 from doorcheck.errors import DoorcheckError
@@ -25,6 +26,7 @@ from doorcheck.pypi import Resolve, newest_version
 
 TIMEOUT_SECONDS = 300
 STDERR_SHOWN = 300
+MAX_OUTPUT_BYTES = 20 * 1024 * 1024
 
 
 class ToolError(DoorcheckError):
@@ -90,8 +92,9 @@ class Adapter(Protocol):
 def run(adapter: Adapter, scan: ScanInput, timeout: float = TIMEOUT_SECONDS) -> ToolRun:
     try:
         result = _result(adapter, scan, timeout)
-    except ToolError as error:
-        problem = Problem(error.key, params={"detail": param(str(error))})
+    except (ToolError, OSError) as error:
+        key = error.key if isinstance(error, ToolError) else "problem.tool_failed"
+        problem = Problem(key, params={"detail": param(str(error))})
         return ToolRun(Check(adapter.name, adapter.version, Status.FAILED, (problem,)))
     if result is None:
         return ToolRun(Check(adapter.name, adapter.version, Status.NOTHING_TO_SCAN))
@@ -105,7 +108,15 @@ def _result(adapter: Adapter, scan: ScanInput, timeout: float) -> Parsed | None:
         return output if output.findings or output.problems else None
     try:
         return adapter.parse(output, scan)
-    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as error:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        IndexError,
+        AttributeError,
+        StopIteration,
+        RecursionError,
+    ) as error:
         message = f"{adapter.name} output not understood: {error!r}"
         raise ToolError(message, "problem.tool_output_not_understood") from error
 
@@ -133,19 +144,17 @@ def check_version(adapter: Adapter, home: Path, timeout: float) -> None:
 
 def _execute(name: str, command: Command, home: Path, timeout: float) -> bytes:
     try:
-        done = subprocess.run(  # noqa: S603 - an adapter's argv list, never a shell
-            command.argv,
-            cwd=command.cwd,
-            env=_environment(home),
-            capture_output=True,
-            timeout=timeout,
-        )
+        done = capture(command.argv, command.cwd, _environment(home), timeout, MAX_OUTPUT_BYTES)
     except FileNotFoundError as error:
         message = f"{name} is not installed: {command.argv[0]}"
         raise ToolError(message, "problem.tool_not_installed") from error
     except subprocess.TimeoutExpired as error:
         message = f"{name} took longer than {timeout} seconds"
         raise ToolError(message, "problem.tool_timed_out") from error
+    except OutputLimitError as error:
+        raise ToolError(
+            f"{name} output exceeds {MAX_OUTPUT_BYTES} bytes", "problem.tool_output_too_large"
+        ) from error
     if done.returncode not in command.ok_exit_codes:
         detail = done.stderr.decode(errors="replace").strip()[-STDERR_SHOWN:]
         raise ToolError(f"{name} failed with exit code {done.returncode}: {detail}")
@@ -159,7 +168,7 @@ def _environment(home: Path) -> dict[str, str]:
     kept = {"PATH", "LANG", "HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"}
     kept |= {"SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"}
     env = {key: value for key, value in os.environ.items() if key in kept}
-    return {**env, "HOME": str(home), "NO_COLOR": "1"}
+    return {**env, "HOME": str(home.resolve()), "NO_COLOR": "1"}
 
 
 def relative(path: str, target: Path) -> str:
