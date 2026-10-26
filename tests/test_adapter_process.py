@@ -66,3 +66,62 @@ def test_read_requests_stop_at_one_overflow_byte(
     with pytest.raises(OutputLimitError):
         capture(argv, tmp_path, {}, 1, 1000)
     assert seen == [1001]
+
+
+def test_collector_stops_at_the_exact_deadline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from doorcheck.adapters import process
+
+    argv = [sys.executable, "-c", "pass"]
+    with subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as child:  # noqa: S603
+        monkeypatch.setattr(process.time, "monotonic", lambda: 10)
+        with pytest.raises(subprocess.TimeoutExpired) as error:
+            process._read(child, deadline=10, limit=100)
+        assert error.value.cmd == argv
+        assert error.value.timeout == 0
+
+
+def test_combined_budget_counts_stderr_before_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    import selectors
+    import time
+    from types import SimpleNamespace
+
+    from doorcheck.adapters import process
+
+    def pipe(data: bytes):
+        reader, writer = os.pipe()
+        os.write(writer, data)
+        os.close(writer)
+        return os.fdopen(reader, "rb")
+
+    original = selectors.DefaultSelector
+    with pipe(b"o" * 600) as output, pipe(b"e" * 600) as errors:
+
+        class ErrorsFirst:
+            def __init__(self):
+                self.selector = original()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                self.selector.close()
+
+            def register(self, *args):
+                return self.selector.register(*args)
+
+            def unregister(self, *args):
+                return self.selector.unregister(*args)
+
+            def get_map(self):
+                return self.selector.get_map()
+
+            def select(self, timeout):
+                events = self.selector.select(timeout)
+                return sorted(events, key=lambda event: event[0].fileobj is not errors)
+
+        monkeypatch.setattr(process.selectors, "DefaultSelector", ErrorsFirst)
+        child = SimpleNamespace(stdout=output, stderr=errors, args=["fixture"])
+        with pytest.raises(OutputLimitError):
+            process._read(child, time.monotonic() + 1, 1000)
