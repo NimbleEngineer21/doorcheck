@@ -47,7 +47,7 @@
   "problem.no_matching_release": "No matching package release was found, so this dependency was not checked.",
   "problem.no_rules": "The scanner has no rules configured and did not run.",
   "problem.package_index_unreadable": "Doorcheck could not read the package index, so this dependency was not resolved.",
-  "problem.requirement_extras_not_checked": "The base package was resolved, but dependencies requested by its extras were not checked.",
+  "problem.requirement_extras_not_checked": "Dependencies requested by this requirement’s extras were not checked.",
   "problem.requirement_not_text": "A dependency declaration is not text and was not checked.",
   "problem.requirement_outside_pypi": "This dependency is not a supported PyPI requirement and was not checked.",
   "problem.requirements_not_list": "The manifest requirements are not a list, so dependencies were not checked.",
