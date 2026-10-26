@@ -15,15 +15,15 @@ import ast
 import ipaddress
 import re
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
+from urllib.parse import urlsplit
 
 from doorcheck.capabilities.model import COMPUTED, Capability, Kind
+from doorcheck.capabilities.python_scopes import Scope, parameters, scopes
 from doorcheck.findings import Location
 
-URL_HOST = re.compile(r"^(?:https?|wss?)://([^/:?#\s]*)", re.IGNORECASE)
-# A URL without a scheme ("//paste.example/x") takes the page's scheme; a host is required.
-SCHEMELESS_HOST = re.compile(r"^//([A-Za-z0-9-]++(?:\.[A-Za-z0-9-]++)++)(?:[/:?#]|$)")
+URL_PREFIX = re.compile(r"^(?:https?|wss?)://", re.IGNORECASE)
 ALL = "<all>"  # every item, such as every integration's settings
 
 PROCESS_CALLS = frozenset(
@@ -118,7 +118,7 @@ def analyze(source: str | bytes, path: str) -> list[Capability]:
     """Every capability in one file. Raises SyntaxError or ValueError if it isn't Python."""
     tree = ast.parse(source)
     nodes = list(ast.walk(tree))  # walked once, read several times
-    context = _context(tree, nodes)
+    contexts = _contexts(tree, nodes)
     docstrings = _docstrings(nodes)
     found: list[Capability] = []
     for node in nodes:
@@ -129,18 +129,40 @@ def analyze(source: str | bytes, path: str) -> list[Capability]:
         location = Location(path, node.lineno, node.col_offset + 1)
         found.extend(
             Capability(kind, location, subject, attrs)
-            for kind, subject, attrs in reader(node, context)
+            for kind, subject, attrs in reader(node, contexts[id(node)])
         )
     return found
 
 
-def _context(tree: ast.Module, nodes: list[ast.AST]) -> Context:
-    aliases = _aliases(nodes)
-    hass_names = {
-        target.id
-        for target, value in map(_assignment, nodes)
-        if isinstance(target, ast.Name) and _is_hass(value, frozenset())
-    }
+def _contexts(tree: ast.Module, nodes: list[ast.AST]) -> dict[int, Context]:
+    groups = scopes(tree)
+    root = _context(tree, nodes, groups[0].nodes)
+    owners: dict[int, Context] = {}
+    contexts: dict[int, Context] = {}
+    for group in groups:
+        context = _nested_context(group, owners[id(group.parent.owner)]) if group.parent else root
+        owners[id(group.owner)] = context
+        contexts.update((id(node), context) for node in group.nodes)
+    return contexts
+
+
+def _nested_context(scope: Scope, parent: Context) -> Context:
+    local = _aliases(scope.nodes)
+    shadowed = parameters(scope.owner) | local.keys()
+    aliases = dict(parent.aliases)
+    # An empty binding also masks fallback spellings such as subprocess or exec.
+    aliases.update(dict.fromkeys(shadowed, ""))
+    aliases.update(local)
+    return replace(
+        parent,
+        aliases=aliases,
+        hass_names=(parent.hass_names - shadowed) | _hass_names(scope.nodes),
+        fixed_dates=parent.fixed_dates - shadowed,
+    )
+
+
+def _context(tree: ast.Module, nodes: list[ast.AST], local: list[ast.AST]) -> Context:
+    aliases = _aliases(local)
     fixed_dates = {
         target.id
         for target, value in map(_assignment, tree.body)
@@ -149,7 +171,15 @@ def _context(tree: ast.Module, nodes: list[ast.AST]) -> Context:
     called = {id(node.func) for node in nodes if isinstance(node, ast.Call)}
     inner = {id(node.value) for node in nodes if isinstance(node, (ast.Attribute, ast.Subscript))}
     return Context(
-        aliases, frozenset(hass_names), frozenset(fixed_dates), frozenset(called), frozenset(inner)
+        aliases, _hass_names(local), frozenset(fixed_dates), frozenset(called), frozenset(inner)
+    )
+
+
+def _hass_names(nodes: list[ast.AST]) -> frozenset[str]:
+    return frozenset(
+        target.id
+        for target, value in map(_assignment, nodes)
+        if isinstance(target, ast.Name) and _is_hass(value, frozenset())
     )
 
 
@@ -173,8 +203,8 @@ def _aliases(nodes: list[ast.AST]) -> dict[str, str]:
     for node in nodes:
         if isinstance(node, ast.Import):
             aliases.update(_import_names(node))
-        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-            aliases.update(_from_names(node, node.module))
+        elif isinstance(node, ast.ImportFrom):
+            aliases.update(_from_names(node))
     return aliases
 
 
@@ -188,9 +218,10 @@ def _import_names(node: ast.Import) -> Iterator[tuple[str, str]]:
             yield top, top
 
 
-def _from_names(node: ast.ImportFrom, module: str) -> Iterator[tuple[str, str]]:
+def _from_names(node: ast.ImportFrom) -> Iterator[tuple[str, str]]:
+    module = node.module if not node.level else None
     for alias in node.names:
-        yield alias.asname or alias.name, f"{module}.{alias.name}"
+        yield alias.asname or alias.name, f"{module}.{alias.name}" if module else ""
 
 
 # --- calls ----------------------------------------------------------------------
@@ -371,7 +402,7 @@ def _assign(node: ast.Assign | ast.AnnAssign, context: Context) -> Result:
     """Assigning to an attribute of an imported module or class replaces its code."""
     targets = node.targets if isinstance(node, ast.Assign) else [node.target]
     for target in targets:
-        if isinstance(target, ast.Attribute) and _dotted(target).split(".")[0] in context.aliases:
+        if isinstance(target, ast.Attribute) and context.aliases.get(_dotted(target).split(".")[0]):
             yield Kind.REPLACES_CODE, _qualified(target, context.aliases), NO_ATTRS
 
 
@@ -382,12 +413,28 @@ def _constant(node: ast.Constant, context: Context) -> Result:
     if not isinstance(node.value, str):
         return
     value = node.value
-    if match := URL_HOST.match(value) or SCHEMELESS_HOST.match(value):
-        yield Kind.NETWORK_HOST, match.group(1).lower() or COMPUTED, NO_ATTRS
+    if host := _url_host(value):
+        yield Kind.NETWORK_HOST, host, NO_ATTRS
     elif _is_public_address(value):
         yield Kind.NETWORK_HOST, value, NO_ATTRS
     elif _names_private_file(value):
         yield Kind.HA_PRIVATE_FILE, value, NO_ATTRS
+
+
+def _url_host(value: str) -> str | None:
+    explicit = URL_PREFIX.match(value) is not None
+    if not explicit and not value.startswith("//"):
+        return None
+    try:
+        host = urlsplit(value).hostname
+    except ValueError:
+        return COMPUTED
+    if not host or any(char.isspace() for char in host):
+        return COMPUTED if explicit else None
+    # Without a scheme, a single path component could be a local file path.
+    if not explicit and "." not in host and ":" not in host:
+        return None
+    return host.lower()
 
 
 def _names_private_file(value: str) -> bool:

@@ -1,11 +1,14 @@
 """Walk a folder of untrusted files and list what the code in it can do.
 
 Nothing is executed or imported. Links are reported and never followed, every
-file is size-capped, and the whole scan has a file-count and time budget.
+file is size-capped, and file-count and time budgets are checked between files.
 Anything that couldn't be read, or wasn't because a limit was hit, is a
 problem of the scan rather than a capability of the code.
 """
 
+import errno
+import os
+import stat
 import sys
 import time
 import tokenize
@@ -45,18 +48,38 @@ class Scanned:
 
 def scan(root: Path, limits: ScanLimits | None = None) -> Scanned:
     limits = limits or ScanLimits()
-    deadline = time.monotonic() + limits.max_seconds
     found: Found = []
-    for count, entry in enumerate(entries(root), start=1):
-        late = time.monotonic() > deadline  # pragma: no mutate - > and >= differ by one tick
-        if count > limits.max_files or late:
-            reason = "file_count" if count > limits.max_files else "time"
-            found.append(_problem("problem.scan_limit_reached", entry.relative, limit=reason))
-            break
-        found.extend(_scan_entry(entry, limits))
+
+    def walk_error(error: OSError) -> None:
+        found.append(_walk_problem(root, error))
+
+    _walk(root, limits, found, walk_error)
     capabilities = [item for item in found if isinstance(item, Capability)]
     problems = [item for item in found if isinstance(item, Problem)]
     return Scanned(tuple(sorted(capabilities, key=_order)), tuple(problems))
+
+
+def _walk(
+    root: Path, limits: ScanLimits, found: Found, walk_error: Callable[[OSError], None]
+) -> None:
+    deadline = time.monotonic() + limits.max_seconds
+    try:
+        for count, entry in enumerate(entries(root, walk_error), start=1):
+            late = time.monotonic() > deadline  # pragma: no mutate - > and >= differ by one tick
+            if count > limits.max_files or late:
+                reason = "file_count" if count > limits.max_files else "time"
+                found.append(_problem("problem.scan_limit_reached", entry.relative, limit=reason))
+                return
+            found.extend(_scan_entry(entry, limits))
+    except OSError as error:
+        walk_error(error)
+
+
+def _walk_problem(root: Path, error: OSError) -> Problem:
+    path = Path(error.filename or root)
+    relative = path.relative_to(root).as_posix() if path.is_relative_to(root) else "."
+    location = None if relative == "." else Location(relative, 1)
+    return Problem("problem.directory_not_readable", location, {"detail": param(str(error))})
 
 
 def _order(capability: Capability) -> tuple[str, int, int, str, str]:
@@ -67,25 +90,46 @@ def _order(capability: Capability) -> tuple[str, int, int, str, str]:
 
 
 def _scan_entry(entry: Entry, limits: ScanLimits) -> Found:
+    try:
+        return _read_entry(entry, limits)
+    except OSError as error:
+        return [_problem("problem.file_not_readable", entry.relative, detail=str(error))]
+
+
+def _read_entry(entry: Entry, limits: ScanLimits) -> Found:
     if entry.is_link:
         target = str(entry.path.readlink())  # where it points, as written; never followed
         return [Capability(Kind.SYMLINK, Location(entry.relative, 1), target)]
     path, relative = entry.path, entry.relative
-    size = path.stat().st_size
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode):
+        return [_problem("problem.file_not_regular", relative)]
+    size = info.st_size
     cap = limits.max_python_bytes if path.suffix == ".py" else limits.max_file_bytes
     if size > cap:
         return [_problem("problem.file_too_large", relative, size=str(size))]
-    if _is_binary(path):
-        return [Capability(Kind.SHIPPED_BINARY, Location(relative, 1), path.suffix or "executable")]
-    reader = _READERS.get(path.suffix) or _READERS.get(path.name)
-    return reader(path.read_bytes(), relative) if reader else []
-
-
-def _is_binary(path: Path) -> bool:
     if path.suffix in BINARY_SUFFIXES:
-        return True
-    with path.open("rb") as handle:
-        return handle.read(4).startswith(BINARY_MAGIC)  # pragma: no mutate - longest magic is 4
+        return [Capability(Kind.SHIPPED_BINARY, Location(relative, 1), path.suffix)]
+    return _contents(path, relative, cap)
+
+
+def _contents(path: Path, relative: str, cap: int) -> Found:
+    reader = _READERS.get(path.suffix) or _READERS.get(path.name)
+    data = _read_file(path, cap + 1 if reader else 4)
+    if len(data) > cap:
+        return [_problem("problem.file_too_large", relative, size=str(len(data)))]
+    if data.startswith(BINARY_MAGIC):
+        return [Capability(Kind.SHIPPED_BINARY, Location(relative, 1), path.suffix or "executable")]
+    return reader(data, relative) if reader else []
+
+
+def _read_file(path: Path, limit: int) -> bytes:
+    # Nonblocking/no-follow also protect a file replaced by a pipe or link after lstat.
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "rb") as handle:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            raise OSError(errno.EINVAL, "not a regular file", str(path))
+        return handle.read(limit)
 
 
 def _python(data: bytes, relative: str) -> Found:

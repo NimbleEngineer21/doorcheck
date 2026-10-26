@@ -4,9 +4,11 @@ Nothing is skipped: a `.git` folder or any other hidden folder that an
 install puts on disk gets scanned like the rest.
 """
 
+import errno
 import json
 import os
-from collections.abc import Iterator
+import stat
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,15 +20,24 @@ class Entry:
     is_link: bool
 
 
-def entries(root: Path) -> Iterator[Entry]:
+def entries(root: Path, on_error: Callable[[OSError], None] | None = None) -> Iterator[Entry]:
     """Every file and link under root, in a stable order. Links, to files or
-    folders, are listed and never entered."""
-    for folder, dirs, files in os.walk(root):  # os.walk never enters linked folders
+    folders, are listed and never entered. Walk errors are reported to on_error,
+    or raised when no handler is supplied."""
+    if not stat.S_ISDIR(root.lstat().st_mode):
+        raise NotADirectoryError(
+            errno.ENOTDIR, "scan root must be a directory, not a link or file", str(root)
+        )
+    for folder, dirs, files in os.walk(root, onerror=on_error or _raise_walk_error):
         dirs.sort()
         here = Path(folder)
         for name in sorted([*files, *(d for d in dirs if (here / d).is_symlink())]):
             path = here / name
             yield Entry(path, path.relative_to(root).as_posix(), path.is_symlink())
+
+
+def _raise_walk_error(error: OSError) -> None:
+    raise error
 
 
 def json_object(data: bytes | None) -> dict[str, object] | None:

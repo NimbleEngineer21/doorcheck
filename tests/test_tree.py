@@ -1,10 +1,45 @@
 """Listing untrusted folders and reading untrusted JSON."""
 
+import errno
 from pathlib import Path
 
 import pytest
 
 from doorcheck.tree import Entry, entries, json_object, read_json_object
+
+
+@pytest.mark.parametrize("kind", ["file", "link"])
+def test_non_directory_roots_explain_the_failure(tmp_path: Path, kind: str) -> None:
+    root = tmp_path / kind
+    target = tmp_path / "target"
+    target.mkdir()
+    if kind == "file":
+        root.write_text("data")
+    else:
+        root.symlink_to(target, target_is_directory=True)
+    with pytest.raises(NotADirectoryError) as raised:
+        list(entries(root))
+    assert raised.value.errno == errno.ENOTDIR
+    assert raised.value.strerror == "scan root must be a directory, not a link or file"
+    assert raised.value.filename == str(root)
+
+
+def test_walk_errors_raise_by_default_or_reach_the_callers_handler(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    error = PermissionError(13, "denied", str(tmp_path))
+
+    def failing_walk(root, *, onerror):
+        onerror(error)
+        return iter(())
+
+    monkeypatch.setattr("doorcheck.tree.os.walk", failing_walk)
+    with pytest.raises(PermissionError) as raised:
+        list(entries(tmp_path))
+    assert raised.value is error
+    errors = []
+    assert list(entries(tmp_path, errors.append)) == []
+    assert errors == [error]
 
 
 def test_every_file_is_listed_in_a_stable_order_including_git(tmp_path: Path) -> None:

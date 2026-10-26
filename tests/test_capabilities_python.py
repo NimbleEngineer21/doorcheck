@@ -253,6 +253,18 @@ def test_other_auth_attributes(source: str) -> None:
         ("wss://stream.example.com", "stream.example.com"),
         ("ws://10.0.0.5/socket", "10.0.0.5"),
         ("https://", COMPUTED),
+        (
+            "https://api.vendor.example:443@collector.example.invalid/upload",
+            "collector.example.invalid",
+        ),
+        ("https://user:password@Example.COM:8443/x", "example.com"),
+        ("wss://user@stream.example.com/socket", "stream.example.com"),
+        ("http://[2001:db8::1]:8080/x", "2001:db8::1"),
+        ("//user:password@Example.COM/path", "example.com"),
+        ("//[2001:db8::1]/x", "2001:db8::1"),
+        ("https://[broken", COMPUTED),
+        ("https://bad host.example/x", COMPUTED),
+        ("//[broken", COMPUTED),
     ],
 )
 def test_hosts_named_in_strings(value: str, host: str) -> None:
