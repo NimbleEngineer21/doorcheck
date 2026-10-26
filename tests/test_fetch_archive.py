@@ -32,7 +32,7 @@ def test_default_limits_match_marketplace() -> None:
 
 
 def test_top_folder_is_stripped_and_folder_entries_dropped() -> None:
-    data = make_zip({"repo-1.0/": None, "repo-1.0/a/": None, "repo-1.0/a/b.py": "x", "top": "y"})
+    data = make_zip({"repo-1.0/": None, "repo-1.0/a/": None, "repo-1.0/a/b.py": "x"})
     archive = Archive(data, strip_top=True)
     assert list(archive.files) == ["a/b.py"]
 
@@ -190,12 +190,10 @@ def test_a_corrupted_member_is_rejected_when_read(offset: int, error: str) -> No
         archive.read("a.txt")
 
 
-def test_names_are_cut_at_nul_and_cannot_hide_a_second_copy() -> None:
+def test_names_containing_nul_are_rejected_before_zipfile_truncates_them() -> None:
     data = make_zip({"evil.py": "x"}).replace(b"evil.py", b"e\0il.py")
-    assert Archive(data).read("e") == b"x"
-    twin = make_zip({"a.py": "x", "a.pyXq": "y"}).replace(b"a.pyXq", b"a.py\0q")
-    with rejected("a.py appears twice"):
-        Archive(twin)
+    with rejected("control or invisible character in 'e\\x00il.py'"):
+        Archive(data)
 
 
 # --- reading and extracting ----------------------------------------------------------
@@ -325,3 +323,41 @@ def test_fetch_errors_have_their_own_keys() -> None:
     assert FetchError("x", "problem.download_failed").key == "problem.download_failed"
     assert issubclass(UnsafeArchive, FetchError)
     assert issubclass(FetchError, DoorcheckError)
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        {"one/a.py": "x", "two/b.py": "y"},
+        {"repo/a.py": "x", "loose.py": "y"},
+        {"single.py": "x"},
+        {"./": None},
+        {},
+    ],
+)
+def test_source_archives_require_one_top_folder(entries: dict[str, str | None]) -> None:
+    with rejected("source archive must contain one top-level folder"):
+        Archive(make_zip(entries), strip_top=True)
+
+
+@pytest.mark.parametrize("entries", [{"a/": None, "a": "x"}, {"a": "x", "a/": None}])
+def test_explicit_directory_file_clashes_are_rejected(entries: dict[str, str | None]) -> None:
+    with rejected("a is both a file and a folder"):
+        Archive(make_zip(entries))
+
+
+def test_encrypted_members_are_keyed_errors_and_leave_no_partial_install(tmp_path: Path) -> None:
+    data = bytearray(make_zip({"a.py": "first", "secret.py": "encrypted"}))
+    local = data.index(b"PK\x03\x04", 4)
+    central = data.index(b"PK\x01\x02", data.index(b"PK\x01\x02") + 4)
+    data[local + 6] |= 1
+    data[central + 8] |= 1
+    dest = tmp_path / "out"
+    with pytest.raises(UnsafeArchive, match=r"^can't unpack into .*encrypted"):
+        Archive(bytes(data)).extract(dest)
+    assert not dest.exists()
+
+
+def test_directory_file_clashes_are_checked_after_top_folder_stripping() -> None:
+    with rejected("a is both a file and a folder"):
+        Archive(make_zip({"repo/a/": None, "repo/a": "x"}), strip_top=True)

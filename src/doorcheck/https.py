@@ -27,8 +27,15 @@ class DownloadError(DoorcheckError):
 
 
 def check_url(url: str, hosts: frozenset[str]) -> None:
-    parts = urlsplit(url)
-    if parts.scheme != "https" or parts.hostname not in hosts:
+    try:
+        parts = urlsplit(url)
+        allowed = parts.scheme == "https" and parts.hostname in hosts
+        authority = parts.username is None and parts.password is None and parts.port in (None, 443)
+    except ValueError as error:
+        raise DownloadError(
+            f"refusing to download from {url}", "problem.download_refused"
+        ) from error
+    if not allowed or not authority:
         raise DownloadError(f"refusing to download from {url}", "problem.download_refused")
 
 

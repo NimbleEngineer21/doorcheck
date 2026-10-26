@@ -31,7 +31,9 @@ def fetch(pages: dict[str, object], url: str = PAGE, limit: int = 100) -> bytes:
     return get(url, HOSTS, limit, opener(HOSTS, FakeHTTPS(pages)))
 
 
-@pytest.mark.parametrize("url", [PAGE, CDN, "https://files.example.org"])
+@pytest.mark.parametrize(
+    "url", [PAGE, CDN, "https://files.example.org", "https://files.example.org:443/a"]
+)
 def test_listed_hosts_are_allowed(url: str) -> None:
     check_url(url, HOSTS)
 
@@ -159,3 +161,20 @@ def test_the_default_opener_only_follows_the_hosts(monkeypatch: pytest.MonkeyPat
     )
     with pytest.raises(DownloadError, match=r"^refusing to download from https://evil\.example/x$"):
         get(PAGE, HOSTS, 100)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://[bad",
+        "https://files.example.org:invalid/a",
+        "https://files.example.org:8443/a",
+        "https://user@files.example.org/a",
+        "https://user:password@files.example.org/a",
+    ],
+)
+def test_malformed_or_unexpected_authorities_are_refused(url: str) -> None:
+    with pytest.raises(DownloadError) as error:
+        fetch({}, url=url)
+    assert error.value.key == "problem.download_refused"
+    assert str(error.value) == f"refusing to download from {url}"

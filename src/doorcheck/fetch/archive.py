@@ -50,6 +50,8 @@ class Archive:
             raise UnsafeArchive(f"not a zip archive: {error}") from error
         _check_size(self._zip.infolist(), limits)
         self.files = _files(self._zip.infolist(), strip_top)
+        if strip_top:
+            _check_top(self._zip.infolist())
         self.commit = _commit(self._zip.comment)
 
     def read(self, path: str) -> bytes | None:
@@ -101,7 +103,13 @@ class Archive:
     def _read(self, info: zipfile.ZipInfo) -> bytes:
         try:
             return self._zip.read(info)
-        except (zipfile.BadZipFile, zlib.error, NotImplementedError, EOFError) as error:
+        except (
+            zipfile.BadZipFile,
+            zlib.error,
+            NotImplementedError,
+            EOFError,
+            RuntimeError,
+        ) as error:
             raise UnsafeArchive(f"can't read {info.filename}: {error}") from error
 
 
@@ -124,20 +132,28 @@ def _files(infos: list[zipfile.ZipInfo], strip_top: bool) -> dict[str, zipfile.Z
     files: dict[str, zipfile.ZipInfo] = {}
     for info in infos:
         name = _name(info, strip_top)
+        if name in files and info.is_dir():
+            raise UnsafeArchive(f"{name} is both a file and a folder")
         if name in files:
             raise UnsafeArchive(f"{info.filename} appears twice")
         if name and not info.is_dir():
             files[name] = info
-    for name in files:
-        for parent in PurePosixPath(name).parents:
-            if str(parent) in files:
-                raise UnsafeArchive(f"{parent} is both a file and a folder")
+    _check_clashes(files, {_name(info, strip_top) for info in infos if info.is_dir()})
     return files
 
 
+def _check_clashes(files: dict[str, zipfile.ZipInfo], directories: set[str]) -> None:
+    for name in files:
+        if name in directories:
+            raise UnsafeArchive(f"{name} is both a file and a folder")
+        for parent in PurePosixPath(name).parents:
+            if str(parent) in files:
+                raise UnsafeArchive(f"{parent} is both a file and a folder")
+
+
 def _name(info: zipfile.ZipInfo, strip_top: bool) -> str:
-    raw = info.filename
-    if "\\" in raw:  # zipfile cuts names at NUL itself, which can only shorten them
+    raw = info.orig_filename
+    if "\\" in raw:
         raise UnsafeArchive(f"backslash in {raw!r}")
     if raw.startswith("/") or re.match(r"[A-Za-z]:", raw):
         raise UnsafeArchive(f"absolute path {raw!r}")
@@ -152,3 +168,14 @@ def _name(info: zipfile.ZipInfo, strip_top: bool) -> str:
     if stat.S_ISLNK(info.external_attr >> 16):
         raise UnsafeArchive(f"link {raw!r}")
     return "/".join(parts[1:] if strip_top else parts)
+
+
+def _check_top(infos: list[zipfile.ZipInfo]) -> None:
+    roots: set[str] = set()
+    for info in infos:
+        parts = PurePosixPath(info.filename).parts
+        if not parts or (len(parts) == 1 and not info.is_dir()):
+            raise UnsafeArchive("source archive must contain one top-level folder")
+        roots.add(parts[0])
+    if len(roots) != 1:
+        raise UnsafeArchive("source archive must contain one top-level folder")

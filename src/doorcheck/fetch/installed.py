@@ -7,17 +7,20 @@ difference between the release zip and the source is listed.
 """
 
 import hashlib
+import os
 import re
+import stat
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 from urllib.parse import quote
 
-from doorcheck.fetch.archive import COMMIT, Archive
+from doorcheck.fetch.archive import COMMIT, MAX_BYTES, MAX_MEMBERS, Archive
 from doorcheck.fetch.errors import FetchError
 from doorcheck.fetch.marketplace import hacs_manifest, source_folder
 from doorcheck.fetch.transport import Get, https_get
 from doorcheck.report import Target
-from doorcheck.tree import entries, read_json_object
+from doorcheck.tree import entries, json_object
 
 REPO = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9_.-]+")
 TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+/-]*")
@@ -35,7 +38,12 @@ class Installed:
 
 def from_folder(folder: Path) -> Installed:
     """An integration folder already on disk, such as custom_components/<domain>."""
-    manifest = read_json_object(folder / "manifest.json") or {}
+    try:
+        manifest = json_object(_file_bytes(folder / "manifest.json", MAX_BYTES)) or {}
+    except FileNotFoundError:
+        manifest = {}
+    except OSError as error:
+        raise FetchError(f"cannot read manifest: {error}") from error
     name, version = manifest.get("domain"), manifest.get("version")
     target = Target(
         name=name if isinstance(name, str) and name else folder.name,
@@ -88,12 +96,41 @@ def tree_digest(root: Path) -> str:
 
     Folders and file times don't count, so the same files hash the same whether
     they were just fetched or have been installed for months."""
+    try:
+        return _tree_digest(root)
+    except OSError as error:
+        raise FetchError(f"cannot hash folder: {error}") from error
+
+
+def _tree_digest(root: Path) -> str:
     digest = hashlib.sha256()
-    for entry in sorted(entries(root), key=lambda e: e.relative):
-        content = str(entry.path.readlink()).encode() if entry.is_link else entry.path.read_bytes()
+    members = list(islice(entries(root), MAX_MEMBERS + 1))
+    if len(members) > MAX_MEMBERS:
+        raise FetchError("folder contains too many files")
+    remaining = MAX_BYTES
+    for entry in sorted(members, key=lambda e: e.relative):
+        content = (
+            str(entry.path.readlink()).encode()
+            if entry.is_link
+            else _file_bytes(entry.path, remaining)
+        )
+        remaining -= len(content)
+        if remaining < 0:
+            raise FetchError("folder exceeds byte limit")
         kind = "link" if entry.is_link else "file"
         digest.update(f"{kind}\0{entry.relative}\0{hashlib.sha256(content).hexdigest()}\n".encode())
     return digest.hexdigest()
+
+
+def _file_bytes(path: Path, limit: int) -> bytes:
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "rb") as handle:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            raise OSError(f"not a regular file: {path}")
+        data = handle.read(limit + 1)
+    if len(data) > limit:
+        raise FetchError("folder exceeds byte limit")
+    return data
 
 
 def _differences(installed: dict[str, str], source: dict[str, str]) -> tuple[str, ...]:

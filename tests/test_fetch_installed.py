@@ -321,3 +321,140 @@ def test_a_link_and_a_file_with_the_same_text_differ(tmp_path: Path) -> None:
     (link_root / "x").symlink_to("target")
     file_root = write(tmp_path / "f", {"x": "target"})
     assert tree_digest(link_root) != tree_digest(file_root)
+
+
+def test_local_manifest_links_are_not_followed(tmp_path: Path) -> None:
+    outside = tmp_path / "private.json"
+    outside.write_text('{"domain":"private"}')
+    root = tmp_path / "integration"
+    root.mkdir()
+    (root / "manifest.json").symlink_to(outside)
+    with pytest.raises(FetchError, match=r"^cannot read manifest:"):
+        from_folder(root)
+
+
+def test_digest_special_files_fail_without_blocking(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+
+    os.mkfifo(tmp_path / "pipe.py")
+    result = subprocess.run(  # noqa: S603 - bounded child tests a local FIFO fixture
+        [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; from doorcheck.fetch import tree_digest, FetchError; "
+            "\ntry: tree_digest(Path(__import__('sys').argv[1]))"
+            "\nexcept FetchError: print('refused')",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=3,
+    )
+    assert result.stdout.strip() == "refused"
+    with pytest.raises(FetchError, match=r"^cannot hash folder: not a regular file:"):
+        tree_digest(tmp_path)
+
+
+def test_digest_limits_count_and_bytes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from doorcheck.fetch import installed
+
+    write(tmp_path, {"a.py": "ab", "b.py": "cd"})
+    monkeypatch.setattr(installed, "MAX_MEMBERS", 2)
+    monkeypatch.setattr(installed, "MAX_BYTES", 4)
+    assert tree_digest(tmp_path)
+    monkeypatch.setattr(installed, "MAX_MEMBERS", 1)
+    with pytest.raises(FetchError, match=r"^folder contains too many files$"):
+        tree_digest(tmp_path)
+    monkeypatch.setattr(installed, "MAX_MEMBERS", 2)
+    monkeypatch.setattr(installed, "MAX_BYTES", 3)
+    with pytest.raises(FetchError, match=r"^folder exceeds byte limit$"):
+        tree_digest(tmp_path)
+
+
+def test_digest_counts_link_target_bytes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from doorcheck.fetch import installed
+
+    (tmp_path / "a").symlink_to("long-target")
+    monkeypatch.setattr(installed, "MAX_BYTES", 10)
+    with pytest.raises(FetchError, match=r"^folder exceeds byte limit$"):
+        tree_digest(tmp_path)
+
+
+def test_manifest_special_files_are_keyed_errors(tmp_path: Path) -> None:
+    os.mkfifo(tmp_path / "manifest.json")
+    with pytest.raises(FetchError, match=r"^cannot read manifest: not a regular file:"):
+        from_folder(tmp_path)
+
+
+def test_local_manifest_uses_the_exact_install_filename(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from doorcheck.fetch import installed
+
+    original = installed._file_bytes
+    seen = []
+
+    def read(path: Path, limit: int) -> bytes:
+        seen.append(path.name)
+        return original(path, limit)
+
+    write(tmp_path, {"manifest.json": '{"domain":"demo"}'})
+    monkeypatch.setattr(installed, "_file_bytes", read)
+    assert from_folder(tmp_path).target.name == "demo"
+    assert seen == ["manifest.json", "manifest.json"]
+
+
+def test_digest_does_not_enumerate_past_the_entry_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from doorcheck.fetch import installed
+
+    original = installed.entries
+    seen = []
+
+    def listing(root: Path):
+        for entry in original(root):
+            seen.append(entry.relative)
+            yield entry
+
+    write(tmp_path, dict.fromkeys(["a", "b", "c", "d"], ""))
+    monkeypatch.setattr(installed, "MAX_MEMBERS", 2)
+    monkeypatch.setattr(installed, "entries", listing)
+    with pytest.raises(FetchError, match=r"^folder contains too many files$"):
+        tree_digest(tmp_path)
+    assert seen == ["a", "b", "c"]
+
+
+def test_local_reads_only_request_one_byte_over_the_remaining_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from doorcheck.fetch import installed
+
+    original = os.fdopen
+    limits = []
+
+    class Reader:
+        def __init__(self, descriptor: int, mode: str) -> None:
+            self.handle = original(descriptor, mode)
+
+        def __enter__(self):
+            self.handle.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.handle.__exit__(*args)
+
+        def fileno(self):
+            return self.handle.fileno()
+
+        def read(self, size):
+            limits.append(size)
+            return self.handle.read(size)
+
+    write(tmp_path, {"file.py": "x" * 100})
+    monkeypatch.setattr(installed, "MAX_BYTES", 3)
+    monkeypatch.setattr(os, "fdopen", Reader)
+    with pytest.raises(FetchError, match=r"^folder exceeds byte limit$"):
+        tree_digest(tmp_path)
+    assert limits == [4]
