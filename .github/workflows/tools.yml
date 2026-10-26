@@ -38,7 +38,8 @@ jobs:
           for adapter in semgrep:Semgrep zizmor:Zizmor guarddog:GuardDog; do
             module="${adapter%%:*}" class="${adapter##*:}"
             version="$(uv run python -c "from doorcheck.adapters.$module import $class; print($class.version)")"
-            uv tool install "$module==$version"
+            # The pinned scanners have native dependencies with Python 3.13 wheels.
+            uv tool install --python 3.13 "$module==$version"
           done
           curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
             "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
