@@ -8,6 +8,7 @@ successful, so CI never reads a gap as a clean result.
 
 from collections.abc import Callable, Mapping
 from typing import Any
+from urllib.parse import quote
 
 from doorcheck.checks import Problem, Status
 from doorcheck.findings import Finding, Location, Severity
@@ -70,7 +71,12 @@ def _location(loc: Location) -> dict[str, Any]:
     region: dict[str, Any] = {"startLine": loc.line}
     if loc.column is not None:
         region["startColumn"] = loc.column
-    return {"physicalLocation": {"artifactLocation": {"uri": loc.path}, "region": region}}
+    return {
+        "physicalLocation": {
+            "artifactLocation": {"uri": quote(loc.path)},
+            "region": region,
+        }
+    }
 
 
 def _rules(findings: tuple[Finding, ...]) -> list[dict[str, Any]]:

@@ -222,3 +222,17 @@ def test_schema_version_is_one() -> None:
 def test_report_rejects_wrong_types(field: str, value: Any, message: str) -> None:
     with pytest.raises(ValueError, match=f"^{message}$"):
         _report(**{field: value})
+
+
+def test_capabilities_are_copied_into_the_frozen_report() -> None:
+    capabilities = list(CAPABILITIES)
+    report = _report(capabilities=capabilities)
+    capabilities.clear()
+    assert report.capabilities == CAPABILITIES
+    assert to_dict(report)["capabilities"] != []
+
+
+@pytest.mark.parametrize("version", [True, 1.0])
+def test_schema_version_requires_an_integer(version: object) -> None:
+    with pytest.raises(ValueError, match=r"^unsupported schema version:"):
+        from_dict(_mutate(["schema_version"], version))

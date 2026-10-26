@@ -155,6 +155,7 @@ def test_rules_are_listed_once_each_in_order_with_cwe_tags() -> None:
 def test_driver_identifies_doorcheck() -> None:
     sarif = to_sarif(_report(), render)
     assert sarif["version"] == "2.1.0"
+    assert sarif["$schema"] == "https://json.schemastore.org/sarif-2.1.0.json"
     driver = sarif["runs"][0]["tool"]["driver"]
     assert driver["name"] == "Doorcheck"
     assert driver["version"] == "0.1.0"
@@ -168,3 +169,26 @@ def test_rule_ties_keep_the_first_finding_in_report_order() -> None:
     )
     rule = _run(report)["tool"]["driver"]["rules"][0]
     assert rule["properties"]["tags"] == ["security", "external/cwe/cwe-22"]
+
+
+def test_artifact_paths_are_encoded_as_relative_uri_paths() -> None:
+    from urllib.parse import unquote, urlsplit
+
+    path = "custom_components/demo/a:b #?%é.py"
+    report = _report(
+        make_finding(location=Location(path, 1)),
+        checks=(
+            Check(
+                "reader", "1", Status.PARTIAL, (Problem("problem.unreadable", Location(path, 1)),)
+            ),
+        ),
+    )
+    run = _run(report)
+    result = run["results"][0]["locations"][0]
+    notification = run["invocations"][0]["toolExecutionNotifications"][0]["locations"][0]
+    for location in (result, notification):
+        uri = location["physicalLocation"]["artifactLocation"]["uri"]
+        assert uri == "custom_components/demo/a%3Ab%20%23%3F%25%C3%A9.py"
+        parsed = urlsplit(uri)
+        assert not (parsed.scheme or parsed.query or parsed.fragment)
+        assert unquote(parsed.path) == path

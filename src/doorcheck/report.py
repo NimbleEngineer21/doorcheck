@@ -21,6 +21,7 @@ from doorcheck.findings import (
     Finding,
     Location,
     Severity,
+    is_int,
     is_optional_str,
     require,
     sort_key,
@@ -72,6 +73,7 @@ class Report:
         capabilities_ok = all(isinstance(c, Capability) for c in self.capabilities)
         require(capabilities_ok, "capabilities must be Capabilities")
         require(all(isinstance(f, Finding) for f in self.findings), "findings must be Findings")
+        object.__setattr__(self, "capabilities", tuple(self.capabilities))
         names = [check.name for check in self.checks]
         require(len(names) == len(set(names)), "each check appears once")
         object.__setattr__(self, "checks", tuple(sorted(self.checks, key=lambda c: c.name)))
@@ -135,7 +137,7 @@ def _finding_to_dict(finding: Finding) -> dict[str, Any]:
 def from_dict(data: object) -> Report:
     """Rebuild a report, rejecting anything this schema version doesn't define."""
     record = _record(data, _REPORT_FIELDS, "report")
-    if record["schema_version"] != SCHEMA_VERSION:
+    if not is_int(record["schema_version"]) or record["schema_version"] != SCHEMA_VERSION:
         raise ValueError(f"unsupported schema version: {record['schema_version']!r}")
     return Report(
         doorcheck_version=record["doorcheck_version"],
