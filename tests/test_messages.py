@@ -18,11 +18,18 @@ from doorcheck.messages import ENGLISH, MessageError, placeholders, render, rend
 def test_catalog_contains_every_literal_key_in_engine() -> None:
     keys = {
         node.value
-        for path in Path("src/doorcheck").rglob("*.py")
+        for folder in ("src/doorcheck", "tools")
+        for path in Path(folder).rglob("*.py")
         for node in ast.walk(ast.parse(path.read_text()))
         if isinstance(node, ast.Constant)
         and isinstance(node.value, str)
-        and node.value.startswith(("finding.", "problem."))
+        and node.value.startswith(("finding.", "problem.", "presentation."))
+    }
+    data = json.loads(files("doorcheck.presentation").joinpath("tokens.json").read_bytes())
+    keys |= {
+        state[field]
+        for state in data["states"].values()
+        for field in ("label_key", "description_key")
     }
     assert keys <= ENGLISH.keys()
     expected = keys | {f"capability.{kind.value}" for kind in Kind}

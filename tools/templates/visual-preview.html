@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$brand — $title</title>
+<style>
+$tokens
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--dc-body-family); font-size: var(--dc-body-size); line-height: var(--dc-line-height); background: var(--dc-background); color: var(--dc-text); }
+main { max-inline-size: var(--dc-content-width); margin-inline: auto; padding: var(--dc-space-8); }
+header { padding-block: var(--dc-space-8) var(--dc-space-12); max-inline-size: 48rem; }
+.brand { display: flex; gap: var(--dc-space-3); align-items: center; color: var(--dc-brand); font-weight: 650; }
+.brand svg { inline-size: 2rem; block-size: 2rem; }
+h1 { font-size: var(--dc-title-size); line-height: 1.1; letter-spacing: -0.035em; margin-block: var(--dc-space-6); font-weight: 650; }
+h2, h3, p { text-align: match-parent; }
+h2 { margin: 0; font-size: 1.5rem; font-weight: 650; }
+p { margin-block: var(--dc-space-2); }
+.intro, .note { color: var(--dc-muted); }
+.themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--dc-space-6); }
+.panel { background: var(--dc-surface); color: var(--dc-text); border: 1px solid var(--dc-border); border-radius: var(--dc-radius); padding: var(--dc-space-6); min-inline-size: 0; }
+.panel-heading { padding-block-end: var(--dc-space-4); border-block-end: 1px solid var(--dc-border); }
+.state { display: grid; grid-template-columns: var(--dc-icon-size) minmax(0, 1fr); align-items: start; gap: var(--dc-space-4); margin-block: var(--dc-space-6); }
+.state svg { inline-size: var(--dc-icon-size); block-size: var(--dc-icon-size); }
+.state h3 { margin: 0; font-size: var(--dc-body-size); font-weight: 650; }
+.state p { color: var(--dc-muted); font-size: var(--dc-small-size); }
+.rtl { text-align: right; margin-block-start: var(--dc-space-6); }
+.rtl .states { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--dc-space-8); }
+.sample { display: flex; gap: var(--dc-space-3); flex-wrap: wrap; padding-block-start: var(--dc-space-4); border-block-start: 1px solid var(--dc-border); }
+bdi { font-family: var(--dc-mono-family); overflow-wrap: anywhere; unicode-bidi: isolate; }
+@media (max-width: 42rem) { main { padding: var(--dc-space-4); } .themes, .rtl .states { grid-template-columns: minmax(0, 1fr); } }
+@media (forced-colors: active) { .state { color: CanvasText !important; } }
+</style>
+<main>
+<header><div class="brand">$mark<span>$brand</span></div><h1>$title</h1><p class="intro">$intro</p></header>
+<div class="themes">$light$dark</div>
+<section class="panel rtl" dir="rtl" data-theme="light" aria-labelledby="rtl-heading">
+<div class="panel-heading"><h2 id="rtl-heading" dir="auto">$rtl</h2><p class="note" dir="auto">$rtl_note</p></div>
+<div class="states">$rtl_states</div>
+<div class="sample"><span>$sample_label</span><bdi dir="auto">$sample_value</bdi></div>
+</section>
+</main>
+<script src="../tools/visual-check.js"></script>
+</html>
