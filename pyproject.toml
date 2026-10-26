@@ -107,7 +107,7 @@ forbidden_modules = ["homeassistant"]
 name = "Each layer builds only on the layers below it"
 type = "layers"
 layers = [
-    "doorcheck.sarif | doorcheck.fetch",
+    "doorcheck.messages | doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
     "doorcheck.capabilities | doorcheck.adapters",
     "doorcheck.dependencies",
@@ -127,6 +127,7 @@ source_modules = [
     "doorcheck.fetch",
     "doorcheck.findings",
     "doorcheck.https",
+    "doorcheck.messages",
     "doorcheck.pypi",
     "doorcheck.report",
     "doorcheck.requirements",

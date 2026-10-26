@@ -40,24 +40,24 @@ uv run python
 ```python
 from pathlib import Path
 from doorcheck.capabilities import scan
+from doorcheck.messages import render, render_capability
 from doorcheck.text import display_safe
 
 result = scan(Path("/path/to/integration"))
 for capability in result.capabilities:
     print(
-        capability.kind.value,
+        render_capability(capability),
         display_safe(capability.location.path),
         capability.location.line,
-        display_safe(capability.subject),
     )
 for problem in result.problems:
-    print(display_safe(str(problem)))
+    print(render(problem.key, problem.params))
 ```
 
 The capability reader does not import or execute the scanned Python. Problem
-keys expose coverage gaps; translated user-facing messages come in a later
-milestone. External scanners are separate executables, not installed by this
-example. The package is not yet published to PyPI.
+keys expose coverage gaps; the [shared English catalog](docs/messages.md)
+provides explanations for capabilities, findings and scan problems. External
+scanners are separate executables, not installed by this example. The package is not yet published to PyPI.
 
 ## Supported versions
 
