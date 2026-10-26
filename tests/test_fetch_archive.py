@@ -361,3 +361,25 @@ def test_encrypted_members_are_keyed_errors_and_leave_no_partial_install(tmp_pat
 def test_directory_file_clashes_are_checked_after_top_folder_stripping() -> None:
     with rejected("a is both a file and a folder"):
         Archive(make_zip({"repo/a/": None, "repo/a": "x"}), strip_top=True)
+
+
+def test_invalid_utf8_in_the_zip_directory_is_a_keyed_archive_error() -> None:
+    data = bytearray(make_zip({"a.py": "x"}))
+    central = data.index(b"PK\x01\x02")
+    data[central + 9] |= 8  # mark the central-directory filename as UTF-8
+    data[central + 46] = 0xFF
+    with pytest.raises(UnsafeArchive, match=r"^not a zip archive: .*utf-8") as error:
+        Archive(bytes(data))
+    assert error.value.key == "problem.unsafe_archive"
+
+
+def test_invalid_utf8_in_a_local_zip_header_cleans_up_the_install(tmp_path: Path) -> None:
+    data = bytearray(make_zip({"a.txt": "first", "b.py": "second"}))
+    local = data.index(b"PK\x03\x04", 4)
+    data[local + 7] |= 8
+    data[local + 30] = 0xFF
+    dest = tmp_path / "out"
+    with pytest.raises(UnsafeArchive, match=r"^can't unpack into .*utf-8") as error:
+        Archive(bytes(data)).extract(dest)
+    assert error.value.key == "problem.unsafe_archive"
+    assert not dest.exists()

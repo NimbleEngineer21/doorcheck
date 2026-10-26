@@ -46,7 +46,7 @@ class Archive:
             raise UnsafeArchive(f"archive is {len(data)} bytes, over {limits.max_bytes}")
         try:
             self._zip = zipfile.ZipFile(io.BytesIO(data))
-        except zipfile.BadZipFile as error:
+        except (zipfile.BadZipFile, UnicodeError) as error:
             raise UnsafeArchive(f"not a zip archive: {error}") from error
         _check_size(self._zip.infolist(), limits)
         self.files = _files(self._zip.infolist(), strip_top)
@@ -109,6 +109,7 @@ class Archive:
             NotImplementedError,
             EOFError,
             RuntimeError,
+            UnicodeError,
         ) as error:
             raise UnsafeArchive(f"can't read {info.filename}: {error}") from error
 

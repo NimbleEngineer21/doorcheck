@@ -47,4 +47,4 @@ jobs:
       - name: Record and test
         run: |
           PATH="$RUNNER_TEMP:$(uv tool dir --bin):$PATH" uv run python -m tools.record_tool_output
-          uv run pytest tests/test_adapters_recorded.py --no-cov
+          uv run pytest tests/test_adapter_semgrep.py tests/test_adapter_zizmor.py tests/test_adapter_osv.py tests/test_adapter_guarddog.py --no-cov
