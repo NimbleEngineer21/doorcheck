@@ -1,7 +1,8 @@
 """Load the benchmark corpus and fetch each case at its pinned commit.
 
 Fetched repos are untrusted: hooks are disabled, Git LFS downloads are skipped,
-and the checked-out commit must be exactly the pinned one. Nothing is executed.
+and both the commit and the working tree are checked before a case is scanned.
+Dirty caches are refused without deleting or overwriting their contents.
 """
 
 import os
@@ -92,21 +93,29 @@ def _matching(pattern: re.Pattern[str], value: object, what: str) -> str:
 def fetch(case: Case, cache: Path, url_template: str = GITHUB) -> Path:
     """Check out the case at its pinned commit, reusing a verified cached copy."""
     target = cache / case.id
+    target.mkdir(parents=True, exist_ok=True)
+    # An empty cache inside another repo must have its own .git before any checks.
+    _git(target, "init")
+    _require_clean(target, case.id)
     if not _at_commit(target, case.commit):
-        target.mkdir(parents=True, exist_ok=True)
-        _git(target, "init")
         _git(target, "fetch", "--depth", "1", url_template.format(repo=case.repo), case.commit)
         _git(target, "checkout", "FETCH_HEAD")
     if not _at_commit(target, case.commit):
         raise RuntimeError(f"{case.id}: checked-out commit doesn't match the pin")
+    _require_clean(target, case.id)
     return target
 
 
+def _require_clean(target: Path, case_id: str) -> None:
+    # Scanners can read ignored files too, and index flags can hide changed tracked files.
+    changes = _git(target, "status", "--porcelain=v1", "--untracked-files=all", "--ignored")
+    flags = _git(target, "ls-files", "-v").splitlines()
+    hidden = any(line[:1] != "H" for line in flags)
+    if changes or hidden:
+        raise RuntimeError(f"{case_id}: cache is not clean; remove {target} and retry")
+
+
 def _at_commit(target: Path, commit: str) -> bool:
-    # Check for the folder's own .git first: git would otherwise search parent
-    # folders and could report a surrounding repository's commit.
-    if not (target / ".git").is_dir():
-        return False
     try:
         return _git(target, "rev-parse", "HEAD") == commit
     except subprocess.CalledProcessError:
@@ -116,7 +125,8 @@ def _at_commit(target: Path, commit: str) -> bool:
 # Safety settings for running git on untrusted repos: no hooks, no Git LFS
 # downloads, and never a credential prompt that would hang the run.
 SAFE_GIT_ENV = {"GIT_LFS_SKIP_SMUDGE": "1", "GIT_TERMINAL_PROMPT": "0"}
-SAFE_GIT_CONFIG = ("-c", "core.hooksPath=/dev/null")  # pragma: no mutate - git keys ignore case
+# Status must not execute a cached repository's filesystem-monitor command.
+SAFE_GIT_CONFIG = ("-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false")
 
 
 def _git(cwd: Path, *args: str) -> str:

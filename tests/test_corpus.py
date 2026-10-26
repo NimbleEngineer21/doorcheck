@@ -127,6 +127,105 @@ def test_fetch_reuses_a_verified_cache_without_the_network(tmp_path: Path) -> No
     assert (fetch(_case(commit), tmp_path / "cache", url) / "a.py").exists()
 
 
+@pytest.mark.parametrize(
+    "change",
+    [
+        "modified",
+        "deleted",
+        "staged",
+        "untracked",
+        "ignored",
+        "untracked-config",
+        "assume-unchanged",
+        "skip-worktree",
+    ],
+)
+def test_fetch_refuses_changed_cache_contents_without_the_network(
+    tmp_path: Path, change: str
+) -> None:
+    commit = make_repo(
+        tmp_path / "remote", "owner/demo", {"a.py": "bug\n", ".gitignore": "ignored.py\n"}
+    )
+    url = f"file://{tmp_path}/remote/{{repo}}"
+    checkout = fetch(_case(commit), tmp_path / "cache", url)
+    if change == "deleted":
+        (checkout / "a.py").unlink()
+    elif change in {"untracked", "ignored", "untracked-config"}:
+        (checkout / f"{change}.py").write_text("extra\n")
+        if change == "untracked-config":
+            corpus._git(checkout, "config", "status.showUntrackedFiles", "no")
+    else:
+        if change in {"assume-unchanged", "skip-worktree"}:
+            corpus._git(checkout, "update-index", f"--{change}", "a.py")
+        (checkout / "a.py").write_text("fixed\n")
+        if change == "staged":
+            corpus._git(checkout, "add", "a.py")
+    before = {p.name: p.read_bytes() for p in checkout.iterdir() if p.is_file()}
+    shutil.rmtree(tmp_path / "remote")
+    with pytest.raises(RuntimeError, match=r"^demo: cache is not clean; remove .* and retry$"):
+        fetch(_case(commit), tmp_path / "cache", url)
+    assert {p.name: p.read_bytes() for p in checkout.iterdir() if p.is_file()} == before
+
+
+def test_changing_the_pin_cannot_overwrite_an_ignored_cache_file(tmp_path: Path) -> None:
+    old = make_repo(tmp_path / "remote", "owner/demo", {".gitignore": "payload.py\n"})
+    new = make_repo(tmp_path / "remote", "owner/demo", {".gitignore": "", "payload.py": "new\n"})
+    url = f"file://{tmp_path}/remote/{{repo}}"
+    checkout = fetch(_case(old), tmp_path / "cache", url)
+    (checkout / "payload.py").write_text("keep this\n")
+    with pytest.raises(RuntimeError, match=r"^demo: cache is not clean;"):
+        fetch(_case(new), tmp_path / "cache", url)
+    assert (checkout / "payload.py").read_text() == "keep this\n"
+    assert corpus._git(checkout, "rev-parse", "HEAD") == old
+
+
+def test_fresh_checkout_contents_are_verified_before_being_returned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commit = make_repo(tmp_path / "remote", "owner/demo", {"a.py": "bug\n"})
+    real_git = corpus._git
+
+    def changed_checkout(cwd: Path, *args: str) -> str:
+        result = real_git(cwd, *args)
+        if args[0] == "checkout":
+            (cwd / "a.py").write_text("fixed\n")
+        return result
+
+    monkeypatch.setattr(corpus, "_git", changed_checkout)
+    with pytest.raises(RuntimeError, match=r"^demo: cache is not clean;"):
+        fetch(_case(commit), tmp_path / "cache", f"file://{tmp_path}/remote/{{repo}}")
+
+
+def test_cache_verification_never_runs_a_filesystem_monitor(tmp_path: Path) -> None:
+    commit = make_repo(tmp_path / "remote", "owner/demo", {"a.py": "bug\n"})
+    url = f"file://{tmp_path}/remote/{{repo}}"
+    checkout = fetch(_case(commit), tmp_path / "cache", url)
+    marker = tmp_path / "monitor-ran"
+    monitor = tmp_path / "monitor.sh"
+    monitor.write_text(f"#!/bin/sh\ntouch {marker}\n")
+    monitor.chmod(0o755)
+    corpus._git(checkout, "config", "core.fsmonitor", str(monitor))
+    assert fetch(_case(commit), tmp_path / "cache", url) == checkout
+    assert not marker.exists()
+
+
+def test_pinned_git_references_work_on_case_sensitive_filesystems(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commit = make_repo(tmp_path / "remote", "owner/demo", {"a.py": "bug\n"})
+    real_git = corpus._git
+
+    def case_sensitive_git(cwd: Path, *args: str) -> str:
+        # Default macOS filesystems can mask an incorrectly cased Git ref name.
+        if args[0] in {"rev-parse", "checkout"} and args[1] != args[1].upper():
+            raise subprocess.CalledProcessError(128, ["git", *args])
+        return real_git(cwd, *args)
+
+    monkeypatch.setattr(corpus, "_git", case_sensitive_git)
+    checkout = fetch(_case(commit), tmp_path / "cache", f"file://{tmp_path}/remote/{{repo}}")
+    assert (checkout / "a.py").read_text() == "bug\n"
+
+
 def test_fetch_refetches_when_the_cache_holds_another_commit(tmp_path: Path) -> None:
     old = make_repo(tmp_path / "old", "owner/demo", {"a.py": "old\n"})
     new = make_repo(tmp_path / "new", "owner/demo", {"a.py": "new\n"})
@@ -203,7 +302,14 @@ def test_git_runs_with_the_safety_settings(monkeypatch: pytest.MonkeyPatch, tmp_
     monkeypatch.setattr(corpus.subprocess, "run", fake_run)
     assert corpus._git(tmp_path, "status") == "out"
     command, env = calls[0]
-    assert command == ["git", "-c", "core.hooksPath=/dev/null", "status"]
+    assert command == [
+        "git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-c",
+        "core.fsmonitor=false",
+        "status",
+    ]
     assert env["GIT_LFS_SKIP_SMUDGE"] == "1"
     assert env["GIT_TERMINAL_PROMPT"] == "0"
     assert env["PATH"]  # the rest of the environment is kept
