@@ -2,7 +2,9 @@
 
 See what a Home Assistant integration can do before you let it in.
 
-> **Status: in development.** Nothing is ready to install yet.
+> **v0.1 core milestone.** The Python core is available for development.
+> The Home Assistant integration, command-line app and dashboard-card scanning
+> are still being built.
 
 Doorcheck will scan Home Assistant custom integrations and dashboard cards, report
 what each one can do (the programs it runs, the hosts it contacts, the files it
@@ -13,16 +15,61 @@ safe, and anything a check couldn't cover is listed rather than skipped.
 
 Doorcheck is not affiliated with Home Assistant or the Open Home Foundation.
 
+## What this milestone includes
+
+- Neutral Python capability observations, manifest requirements and scan coverage gaps.
+- Versioned JSON reports and SARIF export.
+- GitHub source/release fetching, archive validation and artifact fingerprints.
+- Adapters for pinned external scanners; see [Scanning tools](docs/adapters.md).
+- A pinned benchmark corpus and regression harness.
+
+This is an early library interface. A capability is an observation of source,
+not proof of runtime behavior. Dependency snapshots cover direct packages, not
+Home Assistant's full constrained installation. External tools have bounded
+execution and output; they are not sandboxed from the filesystem or network.
+
+## Try the Python core
+
+Use Python 3.13.2 or newer on Linux or macOS. From a checkout:
+
+```sh
+uv sync --locked
+uv run python
+```
+
+```python
+from pathlib import Path
+from doorcheck.capabilities import scan
+from doorcheck.text import display_safe
+
+result = scan(Path("/path/to/integration"))
+for capability in result.capabilities:
+    print(
+        capability.kind.value,
+        display_safe(capability.location.path),
+        capability.location.line,
+        display_safe(capability.subject),
+    )
+for problem in result.problems:
+    print(display_safe(str(problem)))
+```
+
+The capability reader does not import or execute the scanned Python. Problem
+keys expose coverage gaps; translated user-facing messages come in a later
+milestone. External scanners are separate executables, not installed by this
+example. The package is not yet published to PyPI.
+
 ## Supported versions
 
-Home Assistant 2025.11 and newer, which means Python 3.13.2 or newer. The Home
-Assistant integration will install the scanning engine from PyPI, pinned to one
-exact version, like any other integration requirement.
+The planned Home Assistant integration targets Home Assistant 2025.11 and newer,
+which means Python 3.13.2 or newer. It will install the scanning engine from
+PyPI pinned to an exact version when that integration ships.
 
 ## Development
 
 ```sh
-uv sync
+# Use uv 0.13.4 or newer.
+uv sync --locked
 uv run pytest          # tests, with coverage
 uv run ruff check .    # lint; `uv run ruff format .` to format
 uv run mypy            # types
