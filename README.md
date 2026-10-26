@@ -22,6 +22,7 @@ Doorcheck is not affiliated with Home Assistant or the Open Home Foundation.
 - GitHub source/release fetching, archive validation and artifact fingerprints.
 - Adapters for pinned external scanners; see [Scanning tools](docs/adapters.md).
 - A pinned benchmark corpus and regression harness.
+- Shared [presentation tokens, state icons and brand assets](docs/presentation.md).
 
 This is an early library interface. A capability is an observation of source,
 not proof of runtime behavior. Dependency snapshots cover direct packages, not

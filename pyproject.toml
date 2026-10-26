@@ -36,8 +36,10 @@ dev = [
     "mutmut==3.8.0",
     "mypy==2.4.0",
     "pip-audit==2.10.1",
+    "playwright==1.64.1",
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
+    "resvg-py==0.5.0",
     "ruff==0.17.1",
 ]
 
@@ -113,7 +115,7 @@ layers = [
     "doorcheck.dependencies",
     "doorcheck.pypi",
     "doorcheck.checks | doorcheck.requirements | doorcheck.https",
-    "doorcheck.findings | doorcheck.errors | doorcheck.tree | doorcheck.text",
+    "doorcheck.findings | doorcheck.errors | doorcheck.tree | doorcheck.text | doorcheck.presentation",
 ]
 
 [[tool.importlinter.contracts]]
@@ -128,6 +130,7 @@ source_modules = [
     "doorcheck.findings",
     "doorcheck.https",
     "doorcheck.messages",
+    "doorcheck.presentation",
     "doorcheck.pypi",
     "doorcheck.report",
     "doorcheck.requirements",
@@ -146,6 +149,6 @@ version_provider = "pep621"
 source_paths = ["src/doorcheck/", "tools/"]
 pytest_add_cli_args_test_selection = ["tests/"]
 # Data the tests read, copied into mutmut's working copy.
-also_copy = ["benchmark/"]
+also_copy = ["benchmark/", "tools/templates/", "tools/visual-check.js", "docs/"]
 # Coverage of mutated copies is meaningless and would fail the threshold.
 pytest_add_cli_args = ["--no-cov"]

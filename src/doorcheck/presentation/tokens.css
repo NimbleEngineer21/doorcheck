@@ -1,0 +1,60 @@
+:root {
+  --dc-body-family: system-ui, sans-serif;
+  --dc-mono-family: ui-monospace, monospace;
+  --dc-body-size: 1rem;
+  --dc-small-size: 0.875rem;
+  --dc-title-size: clamp(2rem, 5vw, 3.5rem);
+  --dc-line-height: 1.5;
+  --dc-icon-size: 1.5rem;
+  --dc-radius: 0.5rem;
+  --dc-content-width: 72rem;
+  --dc-space-1: 0.25rem;
+  --dc-space-2: 0.5rem;
+  --dc-space-3: 0.75rem;
+  --dc-space-4: 1rem;
+  --dc-space-6: 1.5rem;
+  --dc-space-8: 2rem;
+  --dc-space-12: 3rem;
+  --dc-background: #F5F6F8;
+  --dc-surface: #FFFFFF;
+  --dc-text: #202A35;
+  --dc-muted: #526071;
+  --dc-border: #526071;
+  --dc-brand: #25465C;
+  --dc-serious: #B42332;
+  --dc-review: #875000;
+  --dc-notice: #185CB0;
+  --dc-info: #526071;
+  --dc-none: #526071;
+  --dc-unavailable: #526071;
+}
+
+[data-theme="light"] {
+  --dc-background: #F5F6F8;
+  --dc-surface: #FFFFFF;
+  --dc-text: #202A35;
+  --dc-muted: #526071;
+  --dc-border: #526071;
+  --dc-brand: #25465C;
+  --dc-serious: #B42332;
+  --dc-review: #875000;
+  --dc-notice: #185CB0;
+  --dc-info: #526071;
+  --dc-none: #526071;
+  --dc-unavailable: #526071;
+}
+
+[data-theme="dark"] {
+  --dc-background: #141B23;
+  --dc-surface: #1D2732;
+  --dc-text: #EEF2F6;
+  --dc-muted: #BAC5D2;
+  --dc-border: #9AAFC4;
+  --dc-brand: #B9D8ED;
+  --dc-serious: #FF9DA5;
+  --dc-review: #F5CB80;
+  --dc-notice: #99C5FF;
+  --dc-info: #BAC5D2;
+  --dc-none: #BAC5D2;
+  --dc-unavailable: #BAC5D2;
+}

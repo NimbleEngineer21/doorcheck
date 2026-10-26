@@ -14,7 +14,7 @@ first pull request.
   their signatures.
 - Required status checks (names as CI reports them): `lint`, `format`, `types`,
   `complexity`, `imports`, `tests`, `tests-python-3.13`, `mutation`, `audit`,
-  `package`, `osv-scanner`, `commit messages`, `zizmor`.
+  `package`, `osv-scanner`, `commit messages`, `zizmor`, `visuals`.
 - Require branches to be up to date before merging.
 - Require signed commits.
 - Require linear history.

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorcheck — See the observation. Know the limits.</title>
+<style>
+:root {
+  --dc-body-family: system-ui, sans-serif;
+  --dc-mono-family: ui-monospace, monospace;
+  --dc-body-size: 1rem;
+  --dc-small-size: 0.875rem;
+  --dc-title-size: clamp(2rem, 5vw, 3.5rem);
+  --dc-line-height: 1.5;
+  --dc-icon-size: 1.5rem;
+  --dc-radius: 0.5rem;
+  --dc-content-width: 72rem;
+  --dc-space-1: 0.25rem;
+  --dc-space-2: 0.5rem;
+  --dc-space-3: 0.75rem;
+  --dc-space-4: 1rem;
+  --dc-space-6: 1.5rem;
+  --dc-space-8: 2rem;
+  --dc-space-12: 3rem;
+  --dc-background: #F5F6F8;
+  --dc-surface: #FFFFFF;
+  --dc-text: #202A35;
+  --dc-muted: #526071;
+  --dc-border: #526071;
+  --dc-brand: #25465C;
+  --dc-serious: #B42332;
+  --dc-review: #875000;
+  --dc-notice: #185CB0;
+  --dc-info: #526071;
+  --dc-none: #526071;
+  --dc-unavailable: #526071;
+}
+
+[data-theme="light"] {
+  --dc-background: #F5F6F8;
+  --dc-surface: #FFFFFF;
+  --dc-text: #202A35;
+  --dc-muted: #526071;
+  --dc-border: #526071;
+  --dc-brand: #25465C;
+  --dc-serious: #B42332;
+  --dc-review: #875000;
+  --dc-notice: #185CB0;
+  --dc-info: #526071;
+  --dc-none: #526071;
+  --dc-unavailable: #526071;
+}
+
+[data-theme="dark"] {
+  --dc-background: #141B23;
+  --dc-surface: #1D2732;
+  --dc-text: #EEF2F6;
+  --dc-muted: #BAC5D2;
+  --dc-border: #9AAFC4;
+  --dc-brand: #B9D8ED;
+  --dc-serious: #FF9DA5;
+  --dc-review: #F5CB80;
+  --dc-notice: #99C5FF;
+  --dc-info: #BAC5D2;
+  --dc-none: #BAC5D2;
+  --dc-unavailable: #BAC5D2;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--dc-body-family); font-size: var(--dc-body-size); line-height: var(--dc-line-height); background: var(--dc-background); color: var(--dc-text); }
+main { max-inline-size: var(--dc-content-width); margin-inline: auto; padding: var(--dc-space-8); }
+header { padding-block: var(--dc-space-8) var(--dc-space-12); max-inline-size: 48rem; }
+.brand { display: flex; gap: var(--dc-space-3); align-items: center; color: var(--dc-brand); font-weight: 650; }
+.brand svg { inline-size: 2rem; block-size: 2rem; }
+h1 { font-size: var(--dc-title-size); line-height: 1.1; letter-spacing: -0.035em; margin-block: var(--dc-space-6); font-weight: 650; }
+h2, h3, p { text-align: match-parent; }
+h2 { margin: 0; font-size: 1.5rem; font-weight: 650; }
+p { margin-block: var(--dc-space-2); }
+.intro, .note { color: var(--dc-muted); }
+.themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--dc-space-6); }
+.panel { background: var(--dc-surface); color: var(--dc-text); border: 1px solid var(--dc-border); border-radius: var(--dc-radius); padding: var(--dc-space-6); min-inline-size: 0; }
+.panel-heading { padding-block-end: var(--dc-space-4); border-block-end: 1px solid var(--dc-border); }
+.state { display: grid; grid-template-columns: var(--dc-icon-size) minmax(0, 1fr); align-items: start; gap: var(--dc-space-4); margin-block: var(--dc-space-6); }
+.state svg { inline-size: var(--dc-icon-size); block-size: var(--dc-icon-size); }
+.state h3 { margin: 0; font-size: var(--dc-body-size); font-weight: 650; }
+.state p { color: var(--dc-muted); font-size: var(--dc-small-size); }
+.rtl { text-align: right; margin-block-start: var(--dc-space-6); }
+.rtl .states { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--dc-space-8); }
+.sample { display: flex; gap: var(--dc-space-3); flex-wrap: wrap; padding-block-start: var(--dc-space-4); border-block-start: 1px solid var(--dc-border); }
+bdi { font-family: var(--dc-mono-family); overflow-wrap: anywhere; unicode-bidi: isolate; }
+@media (max-width: 42rem) { main { padding: var(--dc-space-4); } .themes, .rtl .states { grid-template-columns: minmax(0, 1fr); } }
+@media (forced-colors: active) { .state { color: CanvasText !important; } }
+</style>
+<main>
+<header><div class="brand"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 21V3h16v18M4 21h16M8 21V6l9-2v17"/><path d="M13 13h.01"/></svg><span>Doorcheck</span></div><h1>See the observation. Know the limits.</h1><p class="intro">Shared visual foundations for source observations and scan coverage. Shapes and words carry meaning together.</p></header>
+<div class="themes"><section class="panel" data-theme="light" aria-labelledby="light-heading"><div class="panel-heading"><h2 id="light-heading" dir="auto">Light</h2></div><div class="state" style="color:var(--dc-serious)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8Z"/><path d="M12 8v5m0 3h.01"/></svg><div><h3 dir="auto">Serious</h3><p dir="auto">An observation that needs prompt attention. Read the evidence and context.</p></div></div>
+<div class="state" style="color:var(--dc-review)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2Z"/><path d="M12 9v5m0 3h.01"/></svg><div><h3 dir="auto">Review</h3><p dir="auto">An observation to review before deciding what to install or change.</p></div></div>
+<div class="state" style="color:var(--dc-notice)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 11v6m0-10h.01"/></svg><div><h3 dir="auto">Notice</h3><p dir="auto">An observation worth understanding in context.</p></div></div>
+<div class="state" style="color:var(--dc-info)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></svg><div><h3 dir="auto">Info</h3><p dir="auto">An observation about what the source contains or can do.</p></div></div>
+<div class="state" style="color:var(--dc-none)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 4.5a9 9 0 1 0 3.5 3.5"/></svg><div><h3 dir="auto">No observations</h3><p dir="auto">These checks found no observations. This does not establish safety.</p></div></div>
+<div class="state" style="color:var(--dc-unavailable)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg><div><h3 dir="auto">Scan unavailable</h3><p dir="auto">The scan did not run or failed. Results are unavailable.</p></div></div></section><section class="panel" data-theme="dark" aria-labelledby="dark-heading"><div class="panel-heading"><h2 id="dark-heading" dir="auto">Dark</h2></div><div class="state" style="color:var(--dc-serious)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8Z"/><path d="M12 8v5m0 3h.01"/></svg><div><h3 dir="auto">Serious</h3><p dir="auto">An observation that needs prompt attention. Read the evidence and context.</p></div></div>
+<div class="state" style="color:var(--dc-review)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2Z"/><path d="M12 9v5m0 3h.01"/></svg><div><h3 dir="auto">Review</h3><p dir="auto">An observation to review before deciding what to install or change.</p></div></div>
+<div class="state" style="color:var(--dc-notice)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 11v6m0-10h.01"/></svg><div><h3 dir="auto">Notice</h3><p dir="auto">An observation worth understanding in context.</p></div></div>
+<div class="state" style="color:var(--dc-info)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></svg><div><h3 dir="auto">Info</h3><p dir="auto">An observation about what the source contains or can do.</p></div></div>
+<div class="state" style="color:var(--dc-none)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 4.5a9 9 0 1 0 3.5 3.5"/></svg><div><h3 dir="auto">No observations</h3><p dir="auto">These checks found no observations. This does not establish safety.</p></div></div>
+<div class="state" style="color:var(--dc-unavailable)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg><div><h3 dir="auto">Scan unavailable</h3><p dir="auto">The scan did not run or failed. Results are unavailable.</p></div></div></section></div>
+<section class="panel rtl" dir="rtl" data-theme="light" aria-labelledby="rtl-heading">
+<div class="panel-heading"><h2 id="rtl-heading" dir="auto">Right-to-left layout test</h2><p class="note" dir="auto">Layout test only; English messages remain untranslated. Mixed-direction source values are isolated.</p></div>
+<div class="states"><div class="state" style="color:var(--dc-serious)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8Z"/><path d="M12 8v5m0 3h.01"/></svg><div><h3 dir="auto">Serious</h3><p dir="auto">An observation that needs prompt attention. Read the evidence and context.</p></div></div>
+<div class="state" style="color:var(--dc-review)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2Z"/><path d="M12 9v5m0 3h.01"/></svg><div><h3 dir="auto">Review</h3><p dir="auto">An observation to review before deciding what to install or change.</p></div></div>
+<div class="state" style="color:var(--dc-notice)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 11v6m0-10h.01"/></svg><div><h3 dir="auto">Notice</h3><p dir="auto">An observation worth understanding in context.</p></div></div>
+<div class="state" style="color:var(--dc-info)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></svg><div><h3 dir="auto">Info</h3><p dir="auto">An observation about what the source contains or can do.</p></div></div>
+<div class="state" style="color:var(--dc-none)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 4.5a9 9 0 1 0 3.5 3.5"/></svg><div><h3 dir="auto">No observations</h3><p dir="auto">These checks found no observations. This does not establish safety.</p></div></div>
+<div class="state" style="color:var(--dc-unavailable)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg><div><h3 dir="auto">Scan unavailable</h3><p dir="auto">The scan did not run or failed. Results are unavailable.</p></div></div></div>
+<div class="sample"><span>Source value</span><bdi dir="auto">ملف / custom_components/example.py / 123</bdi></div>
+</section>
+</main>
+<script src="../tools/visual-check.js"></script>
+</html>
