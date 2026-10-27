@@ -1,0 +1,4 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    async def verify_own_user(hass, user_id):
+        return await hass.auth.async_get_user(user_id)

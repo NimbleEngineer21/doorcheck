@@ -1,0 +1,5 @@
+{
+  "domain": "doorcheck_fixture_only",
+  "name": "Fixture only",
+  "requirements": []
+}

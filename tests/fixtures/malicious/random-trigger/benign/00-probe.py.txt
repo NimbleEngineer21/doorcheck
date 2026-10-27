@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import random
+    if random.random() < 0.01:
+        sample = {'temperature': 20}

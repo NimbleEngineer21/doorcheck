@@ -1,0 +1,442 @@
+[
+  {
+    "pair": "credential-file",
+    "variant": "adversarial",
+    "expected": 2,
+    "matched": 2,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "credential-file",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "config-entries",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "config-entries",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "login-middleware",
+    "variant": "adversarial",
+    "expected": 2,
+    "matched": 2,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "login-middleware",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "auth-provider-patch",
+    "variant": "adversarial",
+    "expected": 2,
+    "matched": 2,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "auth-provider-patch",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "timed-download-run",
+    "variant": "adversarial",
+    "expected": 3,
+    "matched": 3,
+    "observations": 5,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "timed-download-run",
+    "variant": "benign",
+    "expected": 2,
+    "matched": 2,
+    "observations": 4,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "encoded-code",
+    "variant": "adversarial",
+    "expected": 2,
+    "matched": 2,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "encoded-code",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "hidden-git-code",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "hidden-git-code",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "shipped-bytecode",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "shipped-bytecode",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "url-dependency",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "url-dependency",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "dependency-update",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "dependency-update",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "browser-token",
+    "variant": "adversarial",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "browser-token",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "dashboard-script",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "dashboard-script",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "addon-network",
+    "variant": "adversarial",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "addon-network",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "webhook-scope",
+    "variant": "adversarial",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "webhook-scope",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "copycat-name",
+    "variant": "adversarial",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "copycat-name",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "remote-switch",
+    "variant": "adversarial",
+    "expected": 2,
+    "matched": 2,
+    "observations": 3,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "remote-switch",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "counter-trigger",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "counter-trigger",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "random-trigger",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "random-trigger",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "environment-source",
+    "variant": "adversarial",
+    "expected": 2,
+    "matched": 2,
+    "observations": 2,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "environment-source",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "web-view-auth",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "web-view-auth",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "data-file-code",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "data-file-code",
+    "variant": "benign",
+    "expected": 0,
+    "matched": 0,
+    "observations": 0,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "service-action",
+    "variant": "adversarial",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  },
+  {
+    "pair": "service-action",
+    "variant": "benign",
+    "expected": 1,
+    "matched": 1,
+    "observations": 1,
+    "missing": [],
+    "forbidden": [],
+    "problems": []
+  }
+]

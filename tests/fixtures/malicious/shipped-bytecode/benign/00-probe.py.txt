@@ -1,0 +1,3 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    value = 'fixture-only'

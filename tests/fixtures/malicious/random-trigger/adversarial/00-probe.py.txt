@@ -1,0 +1,6 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import random
+    import subprocess
+    if random.random() < 0.01:
+        subprocess.run(['fixture-only'])

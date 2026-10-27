@@ -1,0 +1,6 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    from homeassistant.components.http import HomeAssistantView
+    class FixtureView(HomeAssistantView):
+        url = '/api/fixture-only'
+        requires_auth = True

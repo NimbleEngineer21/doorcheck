@@ -7,6 +7,9 @@ on:
       - "benchmark/**"
       - "tools/benchmark.py"
       - "tools/corpus.py"
+      - "tools/adversarial.py"
+      - "tests/test_adversarial.py"
+      - "tests/fixtures/malicious/**"
   schedule:
     - cron: "41 7 * * 1"
 
@@ -32,9 +35,13 @@ jobs:
           version: "0.13.4"
           enable-cache: false
       - run: uv sync --locked
+      - name: Check inert paired specimens
+        run: uv run python -m tools.adversarial --check
       # Fetches every case at its pinned commit and scores a scanner that reports
       # nothing, so a broken or vanished pin fails here. Corpus code never runs.
       - name: Fetch and score every pinned case
         run: uv run python -m tools.benchmark tools.benchmark:no_findings --markdown "$RUNNER_TEMP/summary.md"
       - name: Show the summary
-        run: cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          cat docs/adversarial-coverage.md >> "$GITHUB_STEP_SUMMARY"

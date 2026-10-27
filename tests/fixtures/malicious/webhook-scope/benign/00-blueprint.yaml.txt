@@ -1,0 +1,6 @@
+fixture_only: true
+trigger:
+  platform: webhook
+  webhook_id: fixture-only
+  local_only: true
+action: []

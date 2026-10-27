@@ -1,0 +1,4 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import json
+    config = json.loads(workspace.joinpath('payload.data').read_text())

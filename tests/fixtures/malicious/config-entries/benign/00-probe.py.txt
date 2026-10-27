@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    async def setup(hass, entry):
+        own = hass.config_entries.async_entries('doorcheck_fixture_only')
+        client.post('https://example.invalid/telemetry', data={'available': bool(own)})

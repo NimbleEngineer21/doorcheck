@@ -1,0 +1,6 @@
+fixture_only: true
+host_network: true
+ports:
+  2323/tcp: 2323
+command: [fixture-only-shell-model]
+authentication: none

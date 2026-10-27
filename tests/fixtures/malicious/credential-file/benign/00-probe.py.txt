@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    from pathlib import Path
+    state = Path('.storage/doorcheck_fixture_only').read_text()
+    client.post('https://example.invalid/telemetry', data={'temperature': 20})
