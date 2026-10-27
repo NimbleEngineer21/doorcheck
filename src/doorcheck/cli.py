@@ -1,4 +1,4 @@
-"""A local-folder scan command; no downloads or external scanner execution."""
+"""Scan local folders or explicitly pinned GitHub integrations."""
 
 import argparse
 import json
@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Never
 
 from doorcheck.cli_output import human
-from doorcheck.cli_scan import exit_code, scan_folder
+from doorcheck.cli_scan import exit_code, scan_folder, scan_repository
 from doorcheck.messages import render
 from doorcheck.report import to_dict
 from doorcheck.sarif import to_sarif
@@ -28,11 +28,17 @@ def _arguments(argv: Sequence[str]) -> argparse.Namespace:
         raise UsageError
     # False and None both disable these argparse switches.
     parser = Parser(add_help=False, allow_abbrev=False)  # pragma: no mutate - false/None equivalent
-    parser.add_argument("folder")
+    targets = parser.add_mutually_exclusive_group(required=True)
+    targets.add_argument("folder", nargs="?")
+    targets.add_argument("--repo")
+    parser.add_argument("--commit")
     formats = parser.add_mutually_exclusive_group()
     formats.add_argument("--json", action="store_true")
     formats.add_argument("--sarif", action="store_true")
-    return parser.parse_args(argv[1:])
+    options = parser.parse_args(argv[1:])
+    if (options.repo is None) != (options.commit is None) or options.repo == "":
+        raise UsageError
+    return options
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -46,7 +52,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(render("cli.invalid_arguments"), file=sys.stderr)
         return 2
     try:
-        report = scan_folder(Path(options.folder))
+        report = (
+            scan_repository(options.repo, options.commit)
+            if options.repo is not None
+            else scan_folder(Path(options.folder))
+        )
         if options.json:
             output = json.dumps(to_dict(report)) + "\n"
         elif options.sarif:

@@ -20,6 +20,10 @@ def _location(location: Location | None) -> str:
 
 def human(report: Report) -> str:
     lines = [render("cli.target", {"target": _single_line(report.target.name)})]
+    if report.target.commit is not None:
+        lines.append(render("cli.commit", {"commit": _single_line(report.target.commit)}))
+    if report.target.artifact_sha256 is not None:
+        lines.append(render("cli.digest", {"digest": _single_line(report.target.artifact_sha256)}))
     for check in report.checks:
         lines.append(
             render("cli.check", {"check": check.name, "status": render(f"status.{check.status}")})
