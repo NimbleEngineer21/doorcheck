@@ -3,7 +3,7 @@
 See what a Home Assistant integration can do before you let it in.
 
 > **v0.1 core milestone.** The Python core is available for development.
-> A local-folder command-line scanner is available in the current source.
+> Local-folder and pinned GitHub integration scans are available in the current source.
 > The Home Assistant integration and dashboard-card scanning are still being built.
 
 Doorcheck will scan Home Assistant custom integrations and dashboard cards, report
@@ -19,7 +19,7 @@ Doorcheck is not affiliated with Home Assistant or the Open Home Foundation.
 
 - Neutral Python capability observations, manifest requirements and scan coverage gaps.
 - Versioned JSON reports and SARIF export.
-- An offline [local-folder scan command](docs/cli.md) with explicit coverage and exit codes.
+- A [scan command for local folders and pinned GitHub integrations](docs/cli.md) with explicit coverage and exit codes.
 - GitHub source/release fetching, archive validation and artifact fingerprints.
 - Adapters for pinned external scanners; see [Scanning tools](docs/adapters.md).
 - A pinned benchmark corpus and regression harness.
@@ -31,7 +31,7 @@ not proof of runtime behavior. Dependency snapshots cover direct packages, not
 Home Assistant's full constrained installation. External tools have bounded
 execution and output; they are not sandboxed from the filesystem or network.
 
-## Scan a local folder
+## Scan an integration
 
 From a checkout with Python 3.13.2 or newer and uv 0.13.4 or newer:
 
@@ -39,6 +39,7 @@ From a checkout with Python 3.13.2 or newer and uv 0.13.4 or newer:
 uv sync --locked
 uv run doorcheck scan /path/to/integration
 uv run doorcheck scan /path/to/integration --json
+uv run doorcheck scan --repo OWNER/REPO --commit FULL_SHA
 ```
 
 The command runs the source capability reader and one Python file-read rule.

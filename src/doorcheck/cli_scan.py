@@ -1,13 +1,38 @@
-"""Local, offline scan orchestration for the command-line surface."""
+"""Built-in scan orchestration for the command-line surface."""
 
 import stat
+from dataclasses import replace
 from importlib.metadata import version
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from doorcheck import capabilities, rules
 from doorcheck.checks import Check, Problem, Status, status_for
+from doorcheck.fetch import FetchError, from_commit
 from doorcheck.findings import Severity
 from doorcheck.report import Report, Target
+
+
+def scan_repository(repo: str, commit: str) -> Report:
+    """Fetch an explicit commit, scan installed files, then remove the snapshot."""
+    installed_version = version("doorcheck")  # pragma: no mutate - package names ignore case
+    try:
+        with TemporaryDirectory() as temporary:
+            # The private child name has no effect on scan results or cleanup.
+            destination = Path(temporary) / "source"  # pragma: no mutate - arbitrary private name
+            installed = from_commit(repo, commit, destination)
+            report = scan_folder(installed.root)
+            fetched = Check("fetch", installed_version, Status.COMPLETE)
+            return replace(report, target=installed.target, checks=(fetched, *report.checks))
+    except FetchError as error:
+        return _fetch_failed(repo, installed_version, error.key)
+    except OSError:
+        return _fetch_failed(repo, installed_version, "problem.fetch_failed")
+
+
+def _fetch_failed(repo: str, installed_version: str, key: str) -> Report:
+    check = Check("fetch", installed_version, Status.FAILED, (Problem(key),))
+    return Report(installed_version, Target(repo), (check,), (), ())
 
 
 def scan_folder(root: Path) -> Report:
