@@ -17,6 +17,7 @@
   "capability.ha_http_middleware": "References Home Assistant HTTP middleware, which can inspect requests: {subject}.",
   "capability.ha_private_file": "Names a Home Assistant file that may contain private data: {subject}.",
   "capability.ha_service_call": "References a Home Assistant action: {subject}.",
+  "capability.http_request": "Source calls an HTTP request API with destination {subject}. This does not establish that traffic was sent.",
   "capability.native_code": "References native library loading: {subject}.",
   "capability.network_host": "Names a network host: {subject}. This does not prove that traffic was sent.",
   "capability.process": "Names a program or process operation: {subject}.",

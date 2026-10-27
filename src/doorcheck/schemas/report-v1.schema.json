@@ -255,6 +255,7 @@
           "enum": [
             "process",
             "system_module",
+            "http_request",
             "network_host",
             "file_access",
             "file_write",

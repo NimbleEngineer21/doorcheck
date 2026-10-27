@@ -1,0 +1,562 @@
+[
+  {
+    "case": "ref-integration-alandtse--alexa_media_player",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-blakeblackshear--frigate-hass-integration",
+    "target": "custom_components",
+    "requests": 4,
+    "static": 0,
+    "computed": 4,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-frenck--spook",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-mampfes--hacs_waste_collection_schedule",
+    "target": "custom_components",
+    "requests": 1412,
+    "static": 274,
+    "computed": 1138,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-medvedzot--mopeka-ha",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-ctznsniiips--virtual_lymow",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-jurajnyiri--homeassistant-tapo-control",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-thomasloven--hass-browser_mod",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-d03n3rfr1tz3--hass-divoom",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-niddu85--home-assistant-navimow",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-astrandb--sentio",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-frimtec--hass-compal-wifi",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-basnijholt--adaptive-lighting",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-lint-free-technology--uix",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-pushcloudapp--home-assistant",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-agentcny--ha-oebb",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-ankohanse--hass-elite-cloud",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-tejxhdx--minesweeper-ha",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-rosch100--fritzbox-vpn",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-nitaybz--ha-pima",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-banter240--tado_hijack",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-mannotfood--healthsync",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-volschin--gq_gmc-500",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-remmob--itho_amber",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-thokaro--solarwatt-manager-homeassistant",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-sunbox--radpro-home-assistant-plugin",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-lasswellt--govee-homeassistant",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-gregoryduckworth--googlegeocode-hass",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-niktest--solaredge_ev_charger_au",
+    "target": "custom_components",
+    "requests": 2,
+    "static": 0,
+    "computed": 2,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-ulf-tallmyr--ha-vasttrafik",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-krasnoukhov--homeassistant-nova-poshta",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-gvigroux--hon",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-moerk-o--whenhub",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-imhotep--hass-unifi-access",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-kramttocs--ha-gluetun",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-cloudless-garden--ha-gardena-smart-local-preview",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-crillebaba--ha-podcast-feed",
+    "target": "custom_components",
+    "requests": 1,
+    "static": 0,
+    "computed": 1,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-jesserockz--ha-leafspy",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-maxfok--nimbus-climate-scheduler",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-jxlarrea--ha-emfitqs",
+    "target": "custom_components",
+    "requests": 2,
+    "static": 0,
+    "computed": 2,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-tomer-w--ha-victron-mqtt",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-somansch--lufop_radar",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-roblencheg--haval_h3",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-wiso--home-assistant-arpa-lombardia",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-kgn3400--docker_status",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-elden1337--hass-peaqnext",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-dxmnkd316--ha-scheduled-helpers",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-hb9dut--hatoaprs",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-golles--ha-knmi",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-integration-amaximus--met_alerts_hu",
+    "target": "custom_components",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-wilsto--pool-monitor-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-danchaltiel--heatzy-pilote-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-benct--lovelace-multiple-entity-row",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-xbourner--area-card-plus",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-dennisdebest--hatodokanbancard",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-hudint--split-button-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-custom-cards--surveillance-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-cangos655--vehicle-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-springvar--home-assistant-flightradar24-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-mariusthvdb--custom-more-info",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-johro897--ourgroceries-shopping-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-finity69x2--light-brightness-preset-row",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-giorgioparri--lektrico-charger-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-rusty4444--recently-added-media-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-amaximus--pollen-hu-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-nisbo--ha-shopping-list-improved",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-hudsonbrendon--nintendo-switch-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-nathanmarlor--foxess_modbus_charge_period_card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-vineetchoudhary--lovelace-docker-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  },
+  {
+    "case": "ref-card-hypfer--lovelace-valetudo-map-card",
+    "target": ".",
+    "requests": 0,
+    "static": 0,
+    "computed": 0,
+    "problems": []
+  }
+]

@@ -102,3 +102,8 @@ How Doorcheck handles problems it finds in other people's projects is in
 The initial [Home Assistant path rule](docs/rules.md) traces catch-all route values
 to file reads in explicitly unauthenticated views. It has a deliberately limited
 flow model; see its measured catches and blind spots before using its results.
+
+[HTTP request observations](docs/http-observations.md) distinguish recognized
+Python HTTP calls from host-name mentions. They record an initial static URL
+authority when one is known and leave runtime destinations unresolved. They
+carry no severity and do not establish that network traffic occurred.
