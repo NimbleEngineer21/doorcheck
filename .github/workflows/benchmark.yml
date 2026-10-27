@@ -8,6 +8,9 @@ on:
       - "tools/benchmark.py"
       - "tools/corpus.py"
       - "tools/rule_benchmark.py"
+      - "tools/http_benchmark.py"
+      - "tests/test_http_calls.py"
+      - "tests/test_http_benchmark.py"
       - "tools/adversarial.py"
       - "tests/test_adversarial.py"
       - "tests/fixtures/malicious/**"
@@ -42,7 +45,10 @@ jobs:
       # never executed; any incomplete read fails this benchmark.
       - name: Fetch and score every pinned case
         run: uv run python -m tools.benchmark tools.rule_benchmark:findings --markdown "$RUNNER_TEMP/summary.md"
+      - name: Check HTTP source observation evidence
+        run: uv run python -m tools.http_benchmark --check
       - name: Show the summary
         run: |
           cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
           cat docs/adversarial-coverage.md >> "$GITHUB_STEP_SUMMARY"
+          cat docs/http-observations-coverage.md >> "$GITHUB_STEP_SUMMARY"

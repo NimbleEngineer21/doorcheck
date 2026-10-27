@@ -16,6 +16,7 @@ class Kind(StrEnum):
     SYSTEM_MODULE = (
         "system_module"  # imports a module that runs programs, opens sockets or loads code
     )
+    HTTP_REQUEST = "http_request"  # source calls a recognized HTTP request API
     NETWORK_HOST = "network_host"  # names a host to contact
     FILE_ACCESS = "file_access"  # opens or builds a path to a file
     FILE_WRITE = "file_write"  # opens a file for writing
