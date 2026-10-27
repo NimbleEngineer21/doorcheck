@@ -7,7 +7,7 @@ This is a capability-reader benchmark, not a malware detection score. No Home As
 | credential-file | 2/2 | 1/1 | 2/1 | secret-to-network-flow |
 | config-entries | 1/1 | 1/1 | 2/2 | secret-to-network-flow |
 | login-middleware | 2/2 | 1/1 | 2/1 | middleware-data-flow |
-| auth-provider-patch | 2/2 | not asserted | 2/0 | auth-patch-context |
+| auth-provider-patch | 2/2 | 1/1 | 2/1 | auth-patch-context |
 | timed-download-run | 3/3 | 1/1 | 5/2 | download-execution-flow, conditional-triggers |
 | encoded-code | 2/2 | 1/1 | 2/1 | decode-execution-flow |
 | hidden-git-code | 1/1 | not asserted | 1/0 | unexpected-code-location |

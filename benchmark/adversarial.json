@@ -149,7 +149,7 @@
     },
     {
       "id": "auth-provider-patch",
-      "note": "Replacing imported auth-provider behavior versus selecting a local helper.",
+      "note": "Replacing imported auth-provider behavior versus using the existing auth API for a requested user.",
       "origin": "ha-model",
       "gaps": [
         "auth-patch-context"
@@ -178,10 +178,16 @@
         "files": {
           "probe.py": "00-probe.py.txt"
         },
-        "expect": [],
+        "expect": [
+          {
+            "kind": "ha_auth",
+            "subject": "hass.auth",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
         "absent": [
-          "replaces_code",
-          "ha_auth"
+          "replaces_code"
         ]
       }
     },
