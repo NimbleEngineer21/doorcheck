@@ -460,3 +460,8 @@ def test_overridden_get_and_transformed_route() -> None:
         )
         == []
     )
+
+
+def test_route_literal_before_dynamic_suffix() -> None:
+    header = HEADER.replace("'/files/{filename:.*}'", "'/files/{filename:.*}' + suffix")
+    assert findings("return open(filename)", header)

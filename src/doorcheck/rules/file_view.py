@@ -107,11 +107,11 @@ def _public_view(node: ast.ClassDef, aliases: dict[str, str]) -> bool:
 
 
 def _changes_auth(node: ast.AST) -> bool:
-    if isinstance(node, ast.Attribute):
-        return node.attr == "requires_auth" and isinstance(node.ctx, ast.Store)
-    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-        return node.target.id == "requires_auth"
-    return False
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "requires_auth"
+        and isinstance(node.ctx, ast.Store)
+    )
 
 
 def _route_literals(view: ast.ClassDef) -> list[str]:
@@ -122,11 +122,12 @@ def _route_literals(view: ast.ClassDef) -> list[str]:
     allowed = {id(stmt) for stmt in settings}
     if any(_hidden_route(stmt, allowed) for stmt in ast.walk(view)):
         return []
-    route: ast.expr | None = None
-    for stmt in settings:
-        if isinstance(stmt, ast.Assign) and any(_url_target(t) for t in stmt.targets):
-            route = stmt.value
-    return _strings(route) if route is not None else []
+    routes = [
+        stmt.value
+        for stmt in settings
+        if isinstance(stmt, ast.Assign) and any(_url_target(t) for t in stmt.targets)
+    ]
+    return _strings(routes[-1]) if routes else []
 
 
 def _hidden_route(node: ast.AST, allowed: set[int]) -> bool:
