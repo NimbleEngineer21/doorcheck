@@ -19,6 +19,7 @@ Doorcheck is not affiliated with Home Assistant or the Open Home Foundation.
 
 - Neutral Python capability observations, manifest requirements and scan coverage gaps.
 - Versioned JSON reports and SARIF export.
+- A pure [report comparison API](docs/comparison.md) for added/removed observations.
 - A [scan command for local folders and pinned GitHub integrations](docs/cli.md) with explicit coverage and exit codes.
 - GitHub source/release fetching, archive validation and artifact fingerprints.
 - Adapters for pinned external scanners; see [Scanning tools](docs/adapters.md).
