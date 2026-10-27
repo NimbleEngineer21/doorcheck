@@ -16,6 +16,9 @@ classifiers = [
     "Topic :: Security",
 ]
 
+[project.scripts]
+doorcheck = "doorcheck.cli:entrypoint"
+
 [project.entry-points."doorcheck.adapters"]
 guarddog = "doorcheck.adapters.guarddog:GuardDog"
 guarddog-dependencies = "doorcheck.adapters.guarddog:GuardDogDependencies"
@@ -109,6 +112,8 @@ forbidden_modules = ["homeassistant"]
 name = "Each layer builds only on the layers below it"
 type = "layers"
 layers = [
+    "doorcheck.cli",
+    "doorcheck.cli_output | doorcheck.cli_scan",
     "doorcheck.messages | doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
     "doorcheck.rules",

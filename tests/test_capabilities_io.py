@@ -210,3 +210,35 @@ def test_walk_errors_without_a_relative_filename_still_report_the_gap(
     assert result.problems[0].key == "problem.directory_not_readable"
     assert result.problems[0].location is None
     assert "denied" in result.problems[0].params["detail"]
+
+
+def test_unrepresentable_path_at_file_budget(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text("pass")
+    (tmp_path / "z\\bad.py").write_text("import os")
+    result = scan(tmp_path, ScanLimits(max_files=1))
+    assert result.capabilities == ()
+    assert len(result.problems) == 1
+    assert result.problems[0].key == "problem.file_path_not_supported"
+    assert result.problems[0].location is None
+    assert result.problems[0].params == {"path": "z\\bad.py"}
+
+
+def test_unrepresentable_unreadable_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    blocked = tmp_path / "bad\\directory"
+    blocked.mkdir()
+    real_scandir = os.scandir
+
+    def denied(path):
+        if Path(path) == blocked:
+            raise PermissionError(errno.EACCES, "denied", str(blocked))
+        return real_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", denied)
+    result = scan(tmp_path)
+    assert result.capabilities == ()
+    assert len(result.problems) == 1
+    assert result.problems[0].key == "problem.file_path_not_supported"
+    assert result.problems[0].location is None
+    assert result.problems[0].params == {"path": "bad\\directory"}
