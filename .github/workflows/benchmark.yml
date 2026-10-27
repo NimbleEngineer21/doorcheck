@@ -7,6 +7,7 @@ on:
       - "benchmark/**"
       - "tools/benchmark.py"
       - "tools/corpus.py"
+      - "tools/rule_benchmark.py"
       - "tools/adversarial.py"
       - "tests/test_adversarial.py"
       - "tests/fixtures/malicious/**"
@@ -37,10 +38,10 @@ jobs:
       - run: uv sync --locked
       - name: Check inert paired specimens
         run: uv run python -m tools.adversarial --check
-      # Fetches every case at its pinned commit and scores a scanner that reports
-      # nothing, so a broken or vanished pin fails here. Corpus code never runs.
+      # Fetches every pinned case and measures the Python rule. Source is read,
+      # never executed; any incomplete read fails this benchmark.
       - name: Fetch and score every pinned case
-        run: uv run python -m tools.benchmark tools.benchmark:no_findings --markdown "$RUNNER_TEMP/summary.md"
+        run: uv run python -m tools.benchmark tools.rule_benchmark:findings --markdown "$RUNNER_TEMP/summary.md"
       - name: Show the summary
         run: |
           cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
