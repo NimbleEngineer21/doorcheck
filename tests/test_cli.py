@@ -114,7 +114,16 @@ def test_help(args: list[str], capsys: pytest.CaptureFixture[str]) -> None:
     ],
 )
 def test_usage_errors(args: list[str], capsys: pytest.CaptureFixture[str]) -> None:
-    assert cli.main(args) == 2
+    with (
+        patch(
+            "doorcheck.cli.scan_folder", side_effect=AssertionError("invalid input must not scan")
+        ),
+        patch(
+            "doorcheck.cli.scan_repository",
+            side_effect=AssertionError("invalid input must not fetch"),
+        ),
+    ):
+        assert cli.main(args) == 2
     out = capsys.readouterr()
     assert out.out == ""
     assert out.err == render("cli.invalid_arguments") + "\n"
