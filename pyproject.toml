@@ -111,6 +111,7 @@ type = "layers"
 layers = [
     "doorcheck.messages | doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
+    "doorcheck.rules",
     "doorcheck.capabilities | doorcheck.adapters",
     "doorcheck.dependencies",
     "doorcheck.pypi",
@@ -133,6 +134,7 @@ source_modules = [
     "doorcheck.presentation",
     "doorcheck.pypi",
     "doorcheck.report",
+    "doorcheck.rules",
     "doorcheck.requirements",
     "doorcheck.sarif",
     "doorcheck.text",

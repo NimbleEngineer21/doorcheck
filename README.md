@@ -98,3 +98,7 @@ How Doorcheck handles problems it finds in other people's projects is in
 ## License
 
 [Apache-2.0](LICENSE)
+
+The initial [Home Assistant path rule](docs/rules.md) traces catch-all route values
+to file reads in explicitly unauthenticated views. It has a deliberately limited
+flow model; see its measured catches and blind spots before using its results.
