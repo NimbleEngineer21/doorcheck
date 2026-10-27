@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    def fixture_helper():
+        return 'fixture-only'
+    local_helper = fixture_helper

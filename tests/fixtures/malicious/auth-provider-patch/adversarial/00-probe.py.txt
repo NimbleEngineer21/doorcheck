@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import homeassistant.auth.providers.homeassistant as provider
+    provider.async_validate_login = replacement
+    credentials = hass.auth.async_get_users()

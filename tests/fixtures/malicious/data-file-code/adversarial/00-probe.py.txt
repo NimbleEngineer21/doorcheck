@@ -1,0 +1,3 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    exec(workspace.joinpath('payload.data').read_text())

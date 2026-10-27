@@ -1,0 +1,4 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import base64
+    label = base64.b64decode('Zml4dHVyZQ==').decode()

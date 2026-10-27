@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import datetime
+    if datetime.date.today() >= datetime.date(2099, 1, 1):
+        status = client.get('https://example.invalid/status').status_code

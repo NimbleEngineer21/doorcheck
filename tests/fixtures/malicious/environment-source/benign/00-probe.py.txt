@@ -1,0 +1,4 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import os
+    style = os.getenv('DOORCHECK_FIXTURE_THEME')

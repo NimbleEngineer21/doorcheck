@@ -1,0 +1,6 @@
+{
+  "domain": "doorcheck_fixture_only",
+  "requirements": [
+    "doorcheck-fixture-only @ https://example.invalid/fixture.whl"
+  ]
+}

@@ -1,0 +1,808 @@
+{
+  "version": 1,
+  "sources": {
+    "datadog-guarddog": {
+      "url": "https://securitylabs.datadoghq.com/articles/guarddog-identify-malicious-pypi-packages/",
+      "note": "Technique-level rewrites from the published PyPI analyses (including bleurt and sagetesteight), not copies of package payloads. Dataset attribution: Datadog Security Labs, https://github.com/DataDog/malicious-software-packages-dataset . No archives downloaded."
+    },
+    "solana-release": {
+      "url": "https://github.com/solana-foundation/solana-web3.js/releases/tag/v1.95.8",
+      "note": "Maintainer disclosure of the npm publish-account compromise and private-key theft. Browser and Home Assistant examples are original adaptations; this is not a reproduction of the original package."
+    },
+    "osv-copycat": {
+      "url": "https://github.com/ossf/malicious-packages/blob/69ce1ab0d67ec6170adf5c3f9fba790ede81f48f/osv/malicious/npm/@solana-labs/web3.js/MAL-2026-5525.json",
+      "note": "Public OSV-format report for the differently scoped npm look-alike. The two fictitious Home Assistant identities are an analogy, not a claim about a real integration."
+    },
+    "ha-model": {
+      "url": "https://developers.home-assistant.io/",
+      "note": "Original hypothetical Home Assistant models, not observed incidents. The current reader API contracts provide the idioms; no actual integration is accused."
+    },
+    "guardrails": {
+      "url": "https://attack.mitre.org/techniques/T1480/",
+      "note": "Original execution-guard model variants (remote, counter, random); not attributed to any particular malware sample."
+    }
+  },
+  "pairs": [
+    {
+      "id": "credential-file",
+      "note": "Private credential-store path versus integration-owned state.",
+      "origin": "datadog-guarddog",
+      "gaps": [
+        "secret-to-network-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_private_file",
+            "subject": ".storage/auth",
+            "path": "probe.py",
+            "line": 4
+          },
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 5
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 5
+          }
+        ],
+        "absent": [
+          "ha_private_file"
+        ]
+      }
+    },
+    {
+      "id": "config-entries",
+      "note": "All integrations' saved settings versus the integration's own entry.",
+      "origin": "ha-model",
+      "gaps": [
+        "secret-to-network-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_config_entries",
+            "subject": "<all>",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_config_entries",
+            "subject": "'doorcheck_fixture_only'",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": []
+      }
+    },
+    {
+      "id": "login-middleware",
+      "note": "Authorization-header collection versus a middleware that records no credentials.",
+      "origin": "ha-model",
+      "gaps": [
+        "middleware-data-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_http_middleware",
+            "subject": "hass.http.app.middlewares",
+            "path": "probe.py",
+            "line": 6
+          },
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_http_middleware",
+            "subject": "hass.http.app.middlewares",
+            "path": "probe.py",
+            "line": 5
+          }
+        ],
+        "absent": [
+          "network_host"
+        ]
+      }
+    },
+    {
+      "id": "auth-provider-patch",
+      "note": "Replacing imported auth-provider behavior versus selecting a local helper.",
+      "origin": "ha-model",
+      "gaps": [
+        "auth-patch-context"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "replaces_code",
+            "subject": "homeassistant.auth.providers.homeassistant.async_validate_login",
+            "path": "probe.py",
+            "line": 4
+          },
+          {
+            "kind": "ha_auth",
+            "subject": "hass.auth",
+            "path": "probe.py",
+            "line": 5
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [],
+        "absent": [
+          "replaces_code",
+          "ha_auth"
+        ]
+      }
+    },
+    {
+      "id": "timed-download-run",
+      "note": "Date-guarded download/launch versus a date-guarded availability check.",
+      "origin": "datadog-guarddog",
+      "gaps": [
+        "download-execution-flow",
+        "conditional-triggers"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "date_check",
+            "subject": "datetime.date(2099, 1, 1)",
+            "path": "probe.py",
+            "line": 5
+          },
+          {
+            "kind": "process",
+            "subject": "fixture-payload",
+            "path": "probe.py",
+            "line": 8
+          },
+          {
+            "kind": "file_write",
+            "subject": "<computed>",
+            "path": "probe.py",
+            "line": 7
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "date_check",
+            "subject": "datetime.date(2099, 1, 1)",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": [
+          "process",
+          "file_write"
+        ]
+      }
+    },
+    {
+      "id": "encoded-code",
+      "note": "Base64-decoded marker passed to exec versus decoded display data.",
+      "origin": "datadog-guarddog",
+      "gaps": [
+        "decode-execution-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "decode",
+            "subject": "base64.b64decode",
+            "path": "probe.py",
+            "line": 4
+          },
+          {
+            "kind": "dynamic_code",
+            "subject": "exec",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "decode",
+            "subject": "base64.b64decode",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": [
+          "dynamic_code"
+        ]
+      }
+    },
+    {
+      "id": "hidden-git-code",
+      "note": "Code under .git versus an inert note at the same hidden location.",
+      "origin": "ha-model",
+      "gaps": [
+        "unexpected-code-location"
+      ],
+      "adversarial": {
+        "files": {
+          ".git/fixture.py": "00-fixture.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "dynamic_code",
+            "subject": "exec",
+            "path": ".git/fixture.py",
+            "line": 3
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          ".git/fixture.txt": "00-fixture.txt.txt"
+        },
+        "expect": [],
+        "absent": [
+          "dynamic_code"
+        ]
+      }
+    },
+    {
+      "id": "shipped-bytecode",
+      "note": "A .pyc-named sentinel beside source versus a plain data sentinel.",
+      "origin": "ha-model",
+      "gaps": [
+        "compiled-content-inspection"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt",
+          "probe.pyc": "01-probe.pyc.txt"
+        },
+        "expect": [
+          {
+            "kind": "shipped_binary",
+            "subject": ".pyc",
+            "path": "probe.pyc",
+            "line": 1
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt",
+          "probe.data": "01-probe.data.txt"
+        },
+        "expect": [],
+        "absent": [
+          "shipped_binary"
+        ]
+      }
+    },
+    {
+      "id": "url-dependency",
+      "note": "URL dependency declaration versus a versioned PyPI declaration; neither is resolved.",
+      "origin": "datadog-guarddog",
+      "gaps": [
+        "dependency-source-policy"
+      ],
+      "adversarial": {
+        "files": {
+          "manifest.json": "00-manifest.json.txt"
+        },
+        "expect": [
+          {
+            "kind": "dependency_outside_pypi",
+            "subject": "doorcheck-fixture-only @ https://example.invalid/fixture.whl",
+            "path": "manifest.json",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "manifest.json": "00-manifest.json.txt"
+        },
+        "expect": [
+          {
+            "kind": "dependency",
+            "subject": "doorcheck-fixture-only==1.0",
+            "path": "manifest.json",
+            "line": 4
+          }
+        ],
+        "absent": [
+          "dependency_outside_pypi"
+        ]
+      }
+    },
+    {
+      "id": "dependency-update",
+      "note": "A changed dependency pin versus the previous pin; provenance is not inferred from version numbers.",
+      "origin": "solana-release",
+      "gaps": [
+        "dependency-version-diff"
+      ],
+      "adversarial": {
+        "files": {
+          "manifest.json": "00-manifest.json.txt"
+        },
+        "expect": [
+          {
+            "kind": "dependency",
+            "subject": "doorcheck-fixture-only==2.0",
+            "path": "manifest.json",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "manifest.json": "00-manifest.json.txt"
+        },
+        "expect": [
+          {
+            "kind": "dependency",
+            "subject": "doorcheck-fixture-only==1.0",
+            "path": "manifest.json",
+            "line": 4
+          }
+        ],
+        "absent": []
+      }
+    },
+    {
+      "id": "browser-token",
+      "note": "Browser credential-to-request model versus device-state rendering; no real token exists.",
+      "origin": "solana-release",
+      "gaps": [
+        "javascript-data-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "card.js": "00-card.js.txt"
+        },
+        "expect": [],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "card.js": "00-card.js.txt"
+        },
+        "expect": [],
+        "absent": []
+      }
+    },
+    {
+      "id": "dashboard-script",
+      "note": "A remote dashboard script hook versus a bundled script hook.",
+      "origin": "ha-model",
+      "gaps": [
+        "frontend-hooks",
+        "javascript-data-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [],
+        "absent": [
+          "network_host"
+        ]
+      }
+    },
+    {
+      "id": "addon-network",
+      "note": "Host networking and a shell-service declaration versus an isolated, unexposed fixture command.",
+      "origin": "ha-model",
+      "gaps": [
+        "addon-privileges",
+        "endpoint-authentication"
+      ],
+      "adversarial": {
+        "files": {
+          "config.yaml": "00-config.yaml.txt"
+        },
+        "expect": [],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "config.yaml": "00-config.yaml.txt"
+        },
+        "expect": [],
+        "absent": []
+      }
+    },
+    {
+      "id": "webhook-scope",
+      "note": "An externally reachable webhook declaration versus a local-only declaration; no actions run.",
+      "origin": "ha-model",
+      "gaps": [
+        "blueprint-webhooks"
+      ],
+      "adversarial": {
+        "files": {
+          "blueprint.yaml": "00-blueprint.yaml.txt"
+        },
+        "expect": [],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "blueprint.yaml": "00-blueprint.yaml.txt"
+        },
+        "expect": [],
+        "absent": []
+      }
+    },
+    {
+      "id": "copycat-name",
+      "note": "A one-character identity look-alike versus a distinct fixture identity; neither names a real integration.",
+      "origin": "osv-copycat",
+      "gaps": [
+        "repository-identity"
+      ],
+      "adversarial": {
+        "files": {
+          "manifest.json": "00-manifest.json.txt"
+        },
+        "expect": [],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "manifest.json": "00-manifest.json.txt"
+        },
+        "expect": [],
+        "absent": []
+      }
+    },
+    {
+      "id": "remote-switch",
+      "note": "Remote status gates a dummy process versus controlling a local status indicator.",
+      "origin": "guardrails",
+      "gaps": [
+        "conditional-triggers"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "process",
+            "subject": "fixture-only",
+            "path": "probe.py",
+            "line": 5
+          },
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 3
+          }
+        ],
+        "absent": [
+          "process"
+        ]
+      }
+    },
+    {
+      "id": "counter-trigger",
+      "note": "A counter gates a dummy process versus a rate-limited local status update.",
+      "origin": "guardrails",
+      "gaps": [
+        "conditional-triggers"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "process",
+            "subject": "fixture-only",
+            "path": "probe.py",
+            "line": 6
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [],
+        "absent": [
+          "process"
+        ]
+      }
+    },
+    {
+      "id": "random-trigger",
+      "note": "A random draw gates a dummy process versus telemetry sampling.",
+      "origin": "guardrails",
+      "gaps": [
+        "conditional-triggers"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "process",
+            "subject": "fixture-only",
+            "path": "probe.py",
+            "line": 6
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [],
+        "absent": [
+          "process"
+        ]
+      }
+    },
+    {
+      "id": "environment-source",
+      "note": "Environment data sent to a request model versus selecting a display option.",
+      "origin": "datadog-guarddog",
+      "gaps": [
+        "secret-to-network-flow",
+        "conditional-triggers"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "env_read",
+            "subject": "DOORCHECK_FIXTURE_SECRET",
+            "path": "probe.py",
+            "line": 4
+          },
+          {
+            "kind": "network_host",
+            "subject": "example.invalid",
+            "path": "probe.py",
+            "line": 5
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "env_read",
+            "subject": "DOORCHECK_FIXTURE_THEME",
+            "path": "probe.py",
+            "line": 4
+          }
+        ],
+        "absent": [
+          "network_host"
+        ]
+      }
+    },
+    {
+      "id": "web-view-auth",
+      "note": "A view without authentication versus the same view requiring it; no request is handled.",
+      "origin": "ha-model",
+      "gaps": [
+        "endpoint-authentication"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "web_view",
+            "subject": "/api/fixture-only",
+            "path": "probe.py",
+            "line": 4,
+            "attrs": {
+              "class": "FixtureView",
+              "auth": "none"
+            }
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "web_view",
+            "subject": "/api/fixture-only",
+            "path": "probe.py",
+            "line": 4,
+            "attrs": {
+              "class": "FixtureView",
+              "auth": "required"
+            }
+          }
+        ],
+        "absent": []
+      }
+    },
+    {
+      "id": "data-file-code",
+      "note": "A data file used as code versus parsed configuration data.",
+      "origin": "datadog-guarddog",
+      "gaps": [
+        "decode-execution-flow"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt",
+          "payload.data": "01-payload.data.txt"
+        },
+        "expect": [
+          {
+            "kind": "dynamic_code",
+            "subject": "exec",
+            "path": "probe.py",
+            "line": 3
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt",
+          "payload.data": "01-payload.data.txt"
+        },
+        "expect": [],
+        "absent": [
+          "dynamic_code"
+        ]
+      }
+    },
+    {
+      "id": "service-action",
+      "note": "A physical-control action versus a notification action, both only source observations.",
+      "origin": "ha-model",
+      "gaps": [
+        "service-action-context"
+      ],
+      "adversarial": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_service_call",
+            "subject": "lock.unlock",
+            "path": "probe.py",
+            "line": 3
+          }
+        ],
+        "absent": []
+      },
+      "benign": {
+        "files": {
+          "probe.py": "00-probe.py.txt"
+        },
+        "expect": [
+          {
+            "kind": "ha_service_call",
+            "subject": "notify.fixture_only",
+            "path": "probe.py",
+            "line": 3
+          }
+        ],
+        "absent": []
+      }
+    }
+  ]
+}

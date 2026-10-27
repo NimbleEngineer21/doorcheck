@@ -1,0 +1,3 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    hass.services.async_call('lock', 'unlock', {'entity_id': 'lock.fixture_only'})

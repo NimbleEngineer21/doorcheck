@@ -1,0 +1,5 @@
+fixture_only: true
+host_network: false
+ports: {}
+command: [fixture-only-status-model]
+authentication: required

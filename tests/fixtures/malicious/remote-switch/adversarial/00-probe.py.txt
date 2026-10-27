@@ -1,0 +1,5 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    import subprocess
+    if client.get('https://example.invalid/switch').json()['enabled']:
+        subprocess.run(['fixture-only'])

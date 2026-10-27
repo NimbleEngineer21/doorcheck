@@ -1,0 +1,4 @@
+"""Inert specimen: static reading only; never import or execute."""
+if False:
+    if client.get('https://example.invalid/switch').json()['enabled']:
+        indicator = 'available'
