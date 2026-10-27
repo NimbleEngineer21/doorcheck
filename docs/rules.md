@@ -76,7 +76,8 @@ No finding means only that this limited pattern was not found.
 
 The source reader uses the existing file-count, Python-byte and elapsed-time
 budgets. It refuses links/nonregular files and reports read, parse and complexity
-failures as scan problems. Time is checked between files, not as a hard per-AST
+failures as scan problems. Paths that cannot be represented in report locations
+are also explicit problems, rather than terminating the scan. Time is checked between files, not as a hard per-AST
 interrupt. Python syntax support follows the running interpreter.
 
 No runtime dependency was added. Functions at cognitive complexity 10–14 are

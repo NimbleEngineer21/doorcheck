@@ -59,6 +59,7 @@
   "problem.file_not_readable": "Doorcheck could not read this file. It was not checked.",
   "problem.file_not_regular": "This entry is not a regular file and was not read.",
   "problem.file_not_scanned": "The scanner skipped this file. It was not checked by that scanner.",
+  "problem.file_path_not_supported": "A source file path cannot be represented in this report: {path}. The file was not checked.",
   "problem.file_too_complex": "This file exceeds the parser complexity limit and was not fully checked.",
   "problem.file_too_large": "This file exceeds the scan size limit and was not fully checked.",
   "problem.manifest_not_parsed": "Doorcheck could not parse the manifest, so its declarations were not fully checked.",

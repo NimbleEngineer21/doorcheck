@@ -465,3 +465,29 @@ def test_overridden_get_and_transformed_route() -> None:
 def test_route_literal_before_dynamic_suffix() -> None:
     header = HEADER.replace("'/files/{filename:.*}'", "'/files/{filename:.*}' + suffix")
     assert findings("return open(filename)", header)
+
+
+def test_unrepresentable_source_path_is_a_gap(tmp_path: Path) -> None:
+    from doorcheck.checks import Problem
+
+    path = tmp_path / "unusual\\name.py"
+    path.write_text(source("return open(filename)"))
+    result = scan(tmp_path)
+    assert result.findings == ()
+    assert result.problems == (
+        Problem("problem.file_path_not_supported", params={"path": "unusual\\name.py"}),
+    )
+    limited = scan(tmp_path, ScanLimits(max_files=0))
+    assert limited.findings == ()
+    assert limited.problems == (
+        Problem("problem.scan_limit_reached", params={"limit": "file_count"}),
+    )
+    (tmp_path / "good.py").write_text("pass")
+    from doorcheck.findings import Location
+
+    neighbors = scan(tmp_path, ScanLimits(max_python_bytes=3))
+    assert neighbors.findings == ()
+    assert neighbors.problems == (
+        Problem("problem.file_too_large", Location("good.py", 1), {"size": "4"}),
+        Problem("problem.file_path_not_supported", params={"path": "unusual\\name.py"}),
+    )

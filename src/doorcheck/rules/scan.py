@@ -37,7 +37,7 @@ def scan(root: Path, limits: ScanLimits | None = None) -> Scanned:
                 reason = "file_count" if count > limits.max_files else "time"
                 problems.append(
                     Problem(
-                        "problem.scan_limit_reached", Location(entry.relative, 1), {"limit": reason}
+                        "problem.scan_limit_reached", _location(entry.relative), {"limit": reason}
                     )
                 )
                 break
@@ -50,8 +50,18 @@ def scan(root: Path, limits: ScanLimits | None = None) -> Scanned:
     return Scanned(tuple(findings), tuple(problems))
 
 
+def _location(relative: str) -> Location | None:
+    try:
+        return Location(relative, 1)
+    except ValueError:
+        return None
+
+
 def _file(path: Path, relative: str, cap: int) -> Scanned:
-    location = Location(relative, 1)
+    location = _location(relative)
+    if location is None:
+        problem = Problem("problem.file_path_not_supported", params={"path": param(relative)})
+        return Scanned((), (problem,))
     try:
         data = read_regular(path, cap + 1)
         if len(data) > cap:
