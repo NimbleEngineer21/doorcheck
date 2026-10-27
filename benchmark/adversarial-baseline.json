@@ -92,9 +92,9 @@
   {
     "pair": "timed-download-run",
     "variant": "benign",
-    "expected": 1,
-    "matched": 1,
-    "observations": 2,
+    "expected": 2,
+    "matched": 2,
+    "observations": 4,
     "missing": [],
     "forbidden": [],
     "problems": []

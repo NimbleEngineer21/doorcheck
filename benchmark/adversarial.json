@@ -193,7 +193,7 @@
     },
     {
       "id": "timed-download-run",
-      "note": "Date-guarded download/launch versus a date-guarded availability check.",
+      "note": "Date-guarded download/launch versus a status check using a preinstalled tool, without executing downloaded data.",
       "origin": "datadog-guarddog",
       "gaps": [
         "download-execution-flow",
@@ -234,11 +234,16 @@
             "kind": "date_check",
             "subject": "datetime.date(2099, 1, 1)",
             "path": "probe.py",
-            "line": 4
+            "line": 5
+          },
+          {
+            "kind": "process",
+            "subject": "fixture-status-tool",
+            "path": "probe.py",
+            "line": 7
           }
         ],
         "absent": [
-          "process",
           "file_write"
         ]
       }
