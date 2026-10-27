@@ -8,26 +8,30 @@ flow stop propagation; absence of a finding is not proof of path confinement.
 import ast
 from collections.abc import Iterator
 
-from doorcheck.findings import Confidence, Finding, Location, Severity, evidence
-
-Taint = dict[str, ast.expr | None]
+from doorcheck.findings import Confidence, Finding, Location, Severity
+from doorcheck.rules.path_flow import State, Value, flow
+from doorcheck.rules.path_flow import qualified as _name
+from doorcheck.rules.source import check_deadline, segment, source_lines
 
 RULE = "ha-unauth-view-unsanitized-path"
 VIEW = "homeassistant.components.http.HomeAssistantView"
-PATH_BUILDERS = frozenset({"os.path.join", "pathlib.Path"})
 SINKS = frozenset({"open", "aiohttp.web.FileResponse"})
 SUMMARY = "finding.unauth_file_path"
 DETAIL = "finding.unauth_file_path_detail"
 ACTION = "finding.unauth_file_path_action"
 
 
-def analyze(source: str, path: str) -> list[Finding]:
+def analyze(source: str, path: str, *, deadline: float | None = None) -> list[Finding]:
     tree = ast.parse(source)
+    check_deadline(deadline)
+    lines = source_lines(source)
     aliases = _imports(tree)
     found: list[Finding] = []
     for node in tree.body:
+        check_deadline(deadline)
         if isinstance(node, ast.ClassDef) and _public_view(node, aliases):
-            found.extend(_view(node, aliases, source, path))
+            found.extend(_view(node, aliases, lines, path, deadline))
+    check_deadline(deadline)
     return found
 
 
@@ -70,15 +74,6 @@ def _rebound(node: ast.AST, imports: set[int]) -> list[str]:
     if isinstance(node, (ast.Import, ast.ImportFrom)) and id(node) not in imports:
         return list(_import_names(node))
     return []
-
-
-def _name(node: ast.AST, aliases: dict[str, str]) -> str:
-    if isinstance(node, ast.Name):
-        return aliases.get(node.id, "")
-    if isinstance(node, ast.Attribute):
-        parent = _name(node.value, aliases)
-        return f"{parent}.{node.attr}" if parent else ""
-    return ""
 
 
 def _public_view(node: ast.ClassDef, aliases: dict[str, str]) -> bool:
@@ -162,17 +157,26 @@ def _route_arg(name: str, literals: list[str]) -> bool:
 
 
 def _method_origins(
-    method: ast.FunctionDef | ast.AsyncFunctionDef, aliases: dict[str, str], literals: list[str]
+    method: ast.FunctionDef | ast.AsyncFunctionDef,
+    aliases: dict[str, str],
+    literals: list[str],
+    deadline: float | None,
 ) -> Iterator[ast.expr]:
     if any(isinstance(n, ast.NamedExpr) for n in ast.walk(method)):
         return
     args = [*method.args.posonlyargs, *method.args.args]
-    tainted: Taint = {a.arg: None for a in args[2:] if _route_arg(a.arg, literals)}
+    tainted: State = {a.arg: Value(True) for a in args[2:] if _route_arg(a.arg, literals)}
     local_aliases = {k: v for k, v in aliases.items() if k not in {a.arg for a in args}}
-    yield from _block(method.body, tainted, local_aliases)
+    yield from _block(method.body, tainted, local_aliases, deadline)
 
 
-def _view(view: ast.ClassDef, aliases: dict[str, str], source: str, path: str) -> Iterator[Finding]:
+def _view(
+    view: ast.ClassDef,
+    aliases: dict[str, str],
+    lines: list[bytes],
+    path: str,
+    deadline: float | None,
+) -> Iterator[Finding]:
     literals = _route_literals(view)
     methods = {
         n.name: n for n in view.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
@@ -180,9 +184,8 @@ def _view(view: ast.ClassDef, aliases: dict[str, str], source: str, path: str) -
     method = methods.get("get")
     if method is None:
         return
-    for origin in _method_origins(method, aliases, literals):
-        segment = ast.get_source_segment(source, origin)
-        assert segment is not None  # pragma: no mutate - parsed expression has source positions  # noqa: S101
+    for origin in _method_origins(method, aliases, literals, deadline):
+        check_deadline(deadline)
         yield Finding(
             RULE,
             Severity.REVIEW,
@@ -191,18 +194,8 @@ def _view(view: ast.ClassDef, aliases: dict[str, str], source: str, path: str) -
             SUMMARY,
             "doorcheck",
             cwe=22,
-            evidence=evidence(segment),
+            evidence=segment(lines, origin),
         )
-
-
-def _tainted(node: ast.AST, names: Taint, aliases: dict[str, str]) -> bool:
-    if isinstance(node, ast.Name):
-        return node.id in names
-    if isinstance(node, (ast.BinOp, ast.JoinedStr, ast.FormattedValue)):
-        return any(_tainted(child, names, aliases) for child in ast.iter_child_nodes(node))
-    if isinstance(node, ast.Call) and _name(node.func, aliases) in PATH_BUILDERS:
-        return any(_tainted(arg, names, aliases) for arg in node.args)
-    return False
 
 
 def _calls(node: ast.AST) -> Iterator[ast.Call]:
@@ -232,38 +225,45 @@ def _calls(node: ast.AST) -> Iterator[ast.Call]:
 _SIMPLE = (ast.Assign, ast.Expr, ast.Return, ast.Raise, ast.Pass)
 
 
-def _unbind(node: ast.AST, names: Taint) -> None:
+def _unbind(node: ast.AST, names: State) -> None:
     for child in ast.walk(node):
         if isinstance(child, ast.Name):
             names.pop(child.id, None)
 
 
-def _assign(stmt: ast.Assign, names: Taint, aliases: dict[str, str]) -> None:
+def _assign(stmt: ast.Assign, names: State, aliases: dict[str, str]) -> None:
+    value = flow(stmt.value, names, aliases)
     for target in stmt.targets:
-        if isinstance(target, ast.Name) and _tainted(stmt.value, names, aliases):
-            names[target.id] = stmt.value
+        if isinstance(target, ast.Name):
+            names[target.id] = Value(value.tainted, value.absolute, stmt.value)
         else:
             _unbind(target, names)
 
 
 def _with(
-    stmt: ast.With | ast.AsyncWith, names: Taint, aliases: dict[str, str]
+    stmt: ast.With | ast.AsyncWith,
+    names: State,
+    aliases: dict[str, str],
+    deadline: float | None,
 ) -> Iterator[ast.expr]:
     local = names.copy()
     for item in stmt.items:
         yield from _sinks(item.context_expr, local, aliases)
         if item.optional_vars is not None:
             _unbind(item.optional_vars, local)
-    yield from _block(stmt.body, local, aliases)
+    yield from _block(stmt.body, local, aliases, deadline)
 
 
-def _block(body: list[ast.stmt], names: Taint, aliases: dict[str, str]) -> Iterator[ast.expr]:
+def _block(
+    body: list[ast.stmt], names: State, aliases: dict[str, str], deadline: float | None
+) -> Iterator[ast.expr]:
     for stmt in body:
+        check_deadline(deadline)
         if isinstance(stmt, ast.Try):
-            yield from _block(stmt.body, names.copy(), aliases)
+            yield from _block(stmt.body, names.copy(), aliases, deadline)
             return
         if isinstance(stmt, (ast.With, ast.AsyncWith)):
-            yield from _with(stmt, names, aliases)
+            yield from _with(stmt, names, aliases, deadline)
             return
         if not isinstance(stmt, _SIMPLE):
             return
@@ -274,13 +274,13 @@ def _block(body: list[ast.stmt], names: Taint, aliases: dict[str, str]) -> Itera
             return
 
 
-def _sinks(node: ast.AST, names: Taint, aliases: dict[str, str]) -> Iterator[ast.expr]:
+def _sinks(node: ast.AST, names: State, aliases: dict[str, str]) -> Iterator[ast.expr]:
     for call in _calls(node):
         if _name(call.func, aliases) not in SINKS or not call.args:
             continue
         arg = call.args[0]
-        if _tainted(arg, names, aliases) and _reads(call, aliases):
-            origin = names.get(arg.id) if isinstance(arg, ast.Name) else None
+        if flow(arg, names, aliases).tainted and _reads(call, aliases):
+            origin = names[arg.id].origin if isinstance(arg, ast.Name) else None
             yield origin if origin is not None else arg
 
 

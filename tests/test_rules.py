@@ -491,3 +491,304 @@ def test_unrepresentable_source_path_is_a_gap(tmp_path: Path) -> None:
         Problem("problem.file_too_large", Location("good.py", 1), {"size": "4"}),
         Problem("problem.file_path_not_supported", params={"path": "unusual\\name.py"}),
     )
+
+
+@pytest.mark.parametrize(
+    "expr",
+    [
+        "os.path.join(filename, '/public/fixed.js')",
+        "Path(filename, '/public/fixed.js')",
+        "Path(filename) / '/public/fixed.js'",
+        "os.path.join(filename, Path('/public/fixed.js'))",
+        "os.path.join(filename, '/public', 'fixed.js')",
+        "Path(filename) / ('/public/' + 'fixed.js')",
+        "os.path.join(filename, f'/public/fixed.js')",
+    ],
+)
+def test_absolute_path_component_discards_earlier_route_value(expr: str) -> None:
+    assert findings(f"return web.FileResponse({expr})") == []
+
+
+@pytest.mark.parametrize(
+    "expr",
+    [
+        "os.path.join(filename, '/public', filename)",
+        "Path(filename, '/public', filename)",
+        "Path('/public') / filename",
+        "filename + '/public/fixed.js'",
+        "f'{filename}/fixed.js'",
+        "os.path.join(filename, '/public/' + filename)",
+        "os.path.join(filename, f'/public/{filename}')",
+        "os.path.join(filename, f'{filename!r}')",
+    ],
+)
+def test_later_route_values_and_string_concatenation_remain_tainted(expr: str) -> None:
+    assert findings(f"return web.FileResponse({expr})")
+
+
+def test_absolute_paths_remain_known_through_assignments() -> None:
+    assert (
+        findings(
+            "fixed = '/public/fixed.js'\nreturn web.FileResponse(os.path.join(filename, fixed))"
+        )
+        == []
+    )
+    assert (
+        findings(
+            "path = Path(filename)\npath = path / '/public/fixed.js'\nreturn web.FileResponse(path)"
+        )
+        == []
+    )
+    assert findings(
+        "path = Path('/public') / filename\nreturn web.FileResponse(os.path.join(filename, path))"
+    )
+    assert findings("fixed = '/public/fixed.js'\nfixed = filename\nreturn open(fixed)")
+
+
+def test_evidence_indexes_source_once_and_does_not_rescan_prefixes() -> None:
+    from doorcheck.rules.source import source_lines
+
+    text = source("open(filename)\n" * 256)
+    with (
+        patch("doorcheck.rules.file_view.source_lines", wraps=source_lines) as index,
+        patch("ast.get_source_segment", side_effect=AssertionError("source prefix rescanned")),
+    ):
+        result = analyze(text, "view.py")
+    index.assert_called_once_with(text)
+    assert len(result) == 256
+    assert [f.location.line for f in result] == list(range(10, 266))
+    assert all(f.evidence == "filename" for f in result)
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+def test_evidence_preserves_physical_lines_and_utf8_offsets(newline: str) -> None:
+    text = source("unused = 'é🦆'; return web.FileResponse('/public/' +\n    filename)")
+    text = text.replace("\n", newline)
+    result = analyze(text, "view.py")
+    assert result[0].evidence == "'/public/' +" + newline + "            filename"
+    assert result[0].location.line == 10
+    assert findings("return web.FileResponse(\ffilename)")[0].evidence == "filename"
+
+
+@pytest.mark.parametrize("literal", ["x" * 2000, "🦆" * 2000, "x" + "🦆" * 2000])
+def test_evidence_caps_single_line_and_partial_utf8(literal: str) -> None:
+    from doorcheck.findings import evidence
+
+    expr = repr(literal) + " + filename"
+    assert findings(f"return web.FileResponse({expr})")[0].evidence == evidence(expr)
+
+
+def test_multiline_evidence_work_is_bounded() -> None:
+    from doorcheck.findings import evidence
+
+    expr = "'/public/' +\n" + "\n" * 2000 + "            filename"
+    text = source("return web.FileResponse(" + expr + ")")
+    # source() indents every physical line; expected evidence retains those spaces.
+    import ast
+
+    tree = ast.parse(text)
+    origin = next(n for n in ast.walk(tree) if isinstance(n, ast.BinOp))
+    expected = evidence(ast.get_source_segment(text, origin))
+    assert analyze(text, "view.py")[0].evidence == expected
+
+
+def test_deadline_check_has_no_clock_dependency_when_unset() -> None:
+    from doorcheck.rules.source import AnalysisLimit, check_deadline
+
+    with patch("doorcheck.rules.source.time.monotonic", return_value=10) as clock:
+        check_deadline(None)
+        clock.assert_not_called()
+        check_deadline(10)
+        with pytest.raises(AnalysisLimit):
+            check_deadline(9)
+
+
+@pytest.mark.parametrize("count", [1, 2])
+def test_expired_file_work_is_a_gap_even_for_the_last_file(tmp_path: Path, count: int) -> None:
+    from doorcheck.checks import Problem
+    from doorcheck.findings import Location
+    from doorcheck.rules.source import segment
+
+    (tmp_path / "a.py").write_text(source("open(filename)\n" * count))
+    (tmp_path / "b.py").write_text("pass")
+    clock = [0.0]
+
+    def expire_after_evidence(lines, node):
+        value = segment(lines, node)
+        clock[0] = 2.0
+        return value
+
+    with (
+        patch("doorcheck.rules.source.time.monotonic", side_effect=lambda: clock[0]),
+        patch("doorcheck.rules.file_view.segment", side_effect=expire_after_evidence),
+    ):
+        result = scan(tmp_path, ScanLimits(max_seconds=1))
+    assert result.findings == ()
+    assert result.problems == (
+        Problem("problem.scan_limit_reached", Location("a.py", 1), {"limit": "time"}),
+    )
+
+
+def test_deadline_after_parse_is_reported_before_rule_work(tmp_path: Path) -> None:
+    import ast
+
+    parse = ast.parse
+    path = tmp_path / "a.py"
+    path.write_text(source("return open(filename)"))
+    clock = [0.0]
+
+    def slow_parse(text):
+        tree = parse(text)
+        clock[0] = 2.0
+        return tree
+
+    with (
+        patch("doorcheck.rules.source.time.monotonic", side_effect=lambda: clock[0]),
+        patch("doorcheck.rules.file_view.ast.parse", side_effect=slow_parse),
+        patch("doorcheck.rules.file_view.source_lines", side_effect=AssertionError("expired work")),
+    ):
+        result = scan(tmp_path, ScanLimits(max_seconds=1))
+    assert result.findings == ()
+    assert result.problems[0].key == "problem.scan_limit_reached"
+
+
+@pytest.mark.parametrize("length", [300, 301])
+def test_evidence_handles_exact_four_byte_character_boundary(length: int) -> None:
+    from doorcheck.findings import evidence
+
+    name = chr(0x20000) * length
+    text = source("return open(filename)").replace("filename", name)
+    assert analyze(text, "view.py")[0].evidence == evidence(name)
+
+
+def test_evidence_byte_work_stays_within_fixed_budget() -> None:
+    import ast
+
+    from doorcheck.rules.source import segment, source_lines
+
+    reads = []
+
+    class MeasuredLine(bytes):
+        def __getitem__(self, key):
+            piece = super().__getitem__(key)
+            reads.append(len(piece))
+            return piece
+
+    expr = "'/public/' +\n" + "\n" * 2000 + "filename"
+    node = ast.parse(expr.replace("+\n", "+(\n") + ")", mode="eval").body
+    lines = [MeasuredLine(line) for line in source_lines(expr.replace("+\n", "+(\n") + ")")]
+    assert segment(lines, node).endswith("…")
+    assert sum(reads) <= 1204
+
+
+@pytest.mark.parametrize(
+    "expr",
+    [
+        "os.path.join(filename, os.path.join('/public', 'fixed.js'))",
+        "os.path.join(filename, Path('/public', 'fixed.js'))",
+    ],
+)
+def test_nested_absolute_builder_still_discards_prefix(expr: str) -> None:
+    assert findings(f"return open({expr})") == []
+
+
+@pytest.mark.parametrize(
+    "expr",
+    [
+        "f'{Path(filename)}'",
+        "Path('/public') / Path(filename)",
+        "os.path.join(filename, '/fixed' * 0)",
+        "os.path.join(filename, f'fixed.js')",
+        "os.path.join(filename, f'')",
+    ],
+)
+def test_composed_values_preserve_real_route_dependence(expr: str) -> None:
+    assert findings(f"return open({expr})")
+
+
+@pytest.mark.parametrize(
+    "wrapper",
+    [
+        "{body}",
+        "try:\n{body}\nexcept OSError:\n    pass",
+        "with manager():\n{body}",
+        "async with manager():\n{body}",
+    ],
+)
+def test_deadline_stops_statement_work_in_compound_scopes(tmp_path: Path, wrapper: str) -> None:
+    import ast
+
+    from doorcheck.checks import Problem
+    from doorcheck.findings import Location
+
+    body = "noop()\nopen(filename)"
+    if wrapper != "{body}":
+        body = textwrap.indent(body, "    ")
+    (tmp_path / "a.py").write_text(source(wrapper.format(body=body)))
+    real_sinks = file_view._sinks
+    clock = [0.0]
+
+    def expire_on_noop(node, names, aliases):
+        if clock[0] == 2:
+            raise AssertionError("continued statement work after deadline")
+        yield from real_sinks(node, names, aliases)
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "noop"
+        ):
+            clock[0] = 2.0
+
+    with (
+        patch("doorcheck.rules.source.time.monotonic", side_effect=lambda: clock[0]),
+        patch("doorcheck.rules.file_view._sinks", side_effect=expire_on_noop),
+    ):
+        result = scan(tmp_path, ScanLimits(max_seconds=1))
+    assert result.findings == ()
+    assert result.problems == (
+        Problem("problem.scan_limit_reached", Location("a.py", 1), {"limit": "time"}),
+    )
+
+
+def test_deadline_before_class_work(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text(source("return open(filename)"))
+    imports = file_view._imports
+    clock = [0.0]
+
+    def expire_on_imports(tree):
+        aliases = imports(tree)
+        clock[0] = 2.0
+        return aliases
+
+    with (
+        patch("doorcheck.rules.source.time.monotonic", side_effect=lambda: clock[0]),
+        patch("doorcheck.rules.file_view._imports", side_effect=expire_on_imports),
+        patch(
+            "doorcheck.rules.file_view._public_view",
+            side_effect=AssertionError("expired class work"),
+        ),
+    ):
+        result = scan(tmp_path, ScanLimits(max_seconds=1))
+    assert result.problems[0].key == "problem.scan_limit_reached"
+
+
+def test_deadline_before_evidence_work(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text(source("return open(filename)"))
+    sinks = file_view._sinks
+    clock = [0.0]
+
+    def expire_on_sink(node, names, aliases):
+        for origin in sinks(node, names, aliases):
+            clock[0] = 2.0
+            yield origin
+
+    with (
+        patch("doorcheck.rules.source.time.monotonic", side_effect=lambda: clock[0]),
+        patch("doorcheck.rules.file_view._sinks", side_effect=expire_on_sink),
+        patch(
+            "doorcheck.rules.file_view.segment", side_effect=AssertionError("expired evidence work")
+        ),
+    ):
+        result = scan(tmp_path, ScanLimits(max_seconds=1))
+    assert result.problems[0].key == "problem.scan_limit_reached"

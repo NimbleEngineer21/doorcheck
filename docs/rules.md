@@ -17,7 +17,9 @@ The rule requires all of these observations:
   positional route parameter in `get(self, request, ...)`.
 - A value traced from that parameter to a read-mode builtin `open` or aiohttp
   `web.FileResponse`. Assignments, concatenation, f-strings, path division,
-  `os.path.join` and `pathlib.Path` preserve the trace.
+  `os.path.join` and `pathlib.Path` preserve the trace. POSIX absolute path
+  components discard earlier components and their route values; later route
+  values remain tracked. Known absolute paths also survive local assignments.
 
 The finding points to the last path assignment feeding the file operation, or
 its argument when used directly. Its bounded evidence is that expression.
@@ -77,10 +79,20 @@ No finding means only that this limited pattern was not found.
 The source reader uses the existing file-count, Python-byte and elapsed-time
 budgets. It refuses links/nonregular files and reports read, parse and complexity
 failures as scan problems. Paths that cannot be represented in report locations
-are also explicit problems, rather than terminating the scan. Time is checked between files, not as a hard per-AST
-interrupt. Python syntax support follows the running interpreter.
+are also explicit problems, rather than terminating the scan. The shared scan
+deadline is checked after parsing, between rule statements and findings, and
+before returning the analysis of the last file. Expiration reports a coverage
+gap and stops the scan; results from an unfinished file are discarded. Parsing
+and individual AST operations are not forcibly interrupted. Python syntax
+support follows the running interpreter.
+
+Source lines are indexed once as UTF-8 bytes. Each evidence extraction reads at
+most 1,204 bytes, preserving Python byte-column offsets and CR/LF/CRLF line
+boundaries, then clips the display to 300 characters. Repeated findings no
+longer rescan growing source prefixes.
 
 No runtime dependency was added. Functions at cognitive complexity 10–14 are
-small dispatchers: import spelling, literal class/route settings, supported
+small dispatchers: import spelling, literal class/route settings, path-value
+propagation, supported
 statement/with traversal, sink selection and bounded file walking. These checks
 are kept explicit so unsupported input cannot silently become a claimed flow.
