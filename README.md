@@ -3,8 +3,8 @@
 See what a Home Assistant integration can do before you let it in.
 
 > **v0.1 core milestone.** The Python core is available for development.
-> The Home Assistant integration, command-line app and dashboard-card scanning
-> are still being built.
+> A local-folder command-line scanner is available in the current source.
+> The Home Assistant integration and dashboard-card scanning are still being built.
 
 Doorcheck will scan Home Assistant custom integrations and dashboard cards, report
 what each one can do (the programs it runs, the hosts it contacts, the files it
@@ -19,6 +19,7 @@ Doorcheck is not affiliated with Home Assistant or the Open Home Foundation.
 
 - Neutral Python capability observations, manifest requirements and scan coverage gaps.
 - Versioned JSON reports and SARIF export.
+- An offline [local-folder scan command](docs/cli.md) with explicit coverage and exit codes.
 - GitHub source/release fetching, archive validation and artifact fingerprints.
 - Adapters for pinned external scanners; see [Scanning tools](docs/adapters.md).
 - A pinned benchmark corpus and regression harness.
@@ -29,6 +30,20 @@ This is an early library interface. A capability is an observation of source,
 not proof of runtime behavior. Dependency snapshots cover direct packages, not
 Home Assistant's full constrained installation. External tools have bounded
 execution and output; they are not sandboxed from the filesystem or network.
+
+## Scan a local folder
+
+From a checkout with Python 3.13.2 or newer and uv 0.13.4 or newer:
+
+```sh
+uv sync --locked
+uv run doorcheck scan /path/to/integration
+uv run doorcheck scan /path/to/integration --json
+```
+
+The command runs the source capability reader and one Python file-read rule.
+It does not run external scanners or dependency advisory checks. See the
+[CLI guide](docs/cli.md) for coverage, SARIF and exit codes.
 
 ## Try the Python core
 

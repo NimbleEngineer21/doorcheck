@@ -78,8 +78,9 @@ def _walk(
 def _walk_problem(root: Path, error: OSError) -> Problem:
     path = Path(error.filename or root)
     relative = path.relative_to(root).as_posix() if path.is_relative_to(root) else "."
-    location = None if relative == "." else Location(relative, 1)
-    return Problem("problem.directory_not_readable", location, {"detail": param(str(error))})
+    if relative != ".":
+        return _problem("problem.directory_not_readable", relative, detail=str(error))
+    return Problem("problem.directory_not_readable", params={"detail": param(str(error))})
 
 
 def _order(capability: Capability) -> tuple[str, int, int, str, str]:
@@ -90,6 +91,10 @@ def _order(capability: Capability) -> tuple[str, int, int, str, str]:
 
 
 def _scan_entry(entry: Entry, limits: ScanLimits) -> Found:
+    try:
+        Location(entry.relative, 1)  # pragma: no mutate - validation only; any positive line works
+    except ValueError:
+        return [_unsupported_path(entry.relative)]
     try:
         return _read_entry(entry, limits)
     except OSError as error:
@@ -175,7 +180,15 @@ def _manifest(data: bytes, relative: str) -> Found:
 
 
 def _problem(key: str, relative: str, line: int = 1, **params: str) -> Problem:
-    return Problem(key, Location(relative, line), {k: param(v) for k, v in params.items()})
+    try:
+        location = Location(relative, line)
+    except ValueError:
+        return _unsupported_path(relative)
+    return Problem(key, location, {k: param(v) for k, v in params.items()})
+
+
+def _unsupported_path(relative: str) -> Problem:
+    return Problem("problem.file_path_not_supported", params={"path": param(relative)})
 
 
 _READERS: dict[str, Callable[[bytes, str], Found]] = {
