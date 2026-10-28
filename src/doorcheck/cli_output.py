@@ -6,7 +6,7 @@ from doorcheck.report import Report
 from doorcheck.text import display_safe
 
 
-def _single_line(value: str) -> str:
+def single_line(value: str) -> str:
     # Shared rendering preserves newlines/tabs for prose. Source fields must not
     # manufacture new rows that look like trusted check statuses or findings.
     return display_safe(value).replace("\n", "⟨U+000A⟩").replace("\t", "⟨U+0009⟩")
@@ -15,18 +15,21 @@ def _single_line(value: str) -> str:
 def _location(location: Location | None) -> str:
     if location is None:
         return "-"
-    return _single_line(f"{location.path}:{location.line}")
+    return single_line(f"{location.path}:{location.line}")
 
 
-def human(report: Report) -> str:
-    lines = [render("cli.target", {"target": _single_line(report.target.name)})]
+def report_body(report: Report) -> str:
+    lines = [render("cli.target", {"target": single_line(report.target.name)})]
     if report.target.commit is not None:
-        lines.append(render("cli.commit", {"commit": _single_line(report.target.commit)}))
+        lines.append(render("cli.commit", {"commit": single_line(report.target.commit)}))
     if report.target.artifact_sha256 is not None:
-        lines.append(render("cli.digest", {"digest": _single_line(report.target.artifact_sha256)}))
+        lines.append(render("cli.digest", {"digest": single_line(report.target.artifact_sha256)}))
     for check in report.checks:
         lines.append(
-            render("cli.check", {"check": check.name, "status": render(f"status.{check.status}")})
+            render(
+                "cli.check",
+                {"check": single_line(check.name), "status": render(f"status.{check.status}")},
+            )
         )
         for problem in check.problems:
             lines.append(
@@ -34,7 +37,7 @@ def human(report: Report) -> str:
                     "cli.problem",
                     {
                         "location": _location(problem.location),
-                        "message": _single_line(render(problem.key, problem.params)),
+                        "message": single_line(render(problem.key, problem.params)),
                     },
                 )
             )
@@ -46,7 +49,7 @@ def human(report: Report) -> str:
                     "severity": render(f"severity.{finding.severity}"),
                     "location": _location(finding.location),
                     "rule": finding.rule_id,
-                    "message": _single_line(render(finding.message_key, finding.params)),
+                    "message": single_line(render(finding.message_key, finding.params)),
                 },
             )
         )
@@ -56,7 +59,7 @@ def human(report: Report) -> str:
                 "cli.capability",
                 {
                     "location": _location(capability.location),
-                    "message": _single_line(render_capability(capability)),
+                    "message": single_line(render_capability(capability)),
                 },
             )
         )
@@ -66,5 +69,8 @@ def human(report: Report) -> str:
             {"findings": str(len(report.findings)), "observations": str(len(report.capabilities))},
         )
     )
-    lines.append(render("cli.scope"))
     return "\n".join(lines) + "\n"
+
+
+def human(report: Report) -> str:
+    return report_body(report) + render("cli.scope") + "\n"

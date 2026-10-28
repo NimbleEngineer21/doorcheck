@@ -1,4 +1,4 @@
-"""Scan local folders or explicitly pinned GitHub integrations."""
+"""Scan source snapshots or compare saved reports."""
 
 import argparse
 import json
@@ -7,7 +7,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Never
 
-from doorcheck.cli_output import human
+from doorcheck.cli_compare import ReportInputError, command
+from doorcheck.cli_output import human, single_line
 from doorcheck.cli_scan import exit_code, scan_folder, scan_repository
 from doorcheck.messages import render
 from doorcheck.report import to_dict
@@ -24,6 +25,8 @@ class Parser(argparse.ArgumentParser):
 
 
 def _arguments(argv: Sequence[str]) -> argparse.Namespace:
+    if argv[0] == "compare":
+        return _comparison_arguments(argv[1:])
     if argv[0] != "scan":
         raise UsageError
     # False and None both disable these argparse switches.
@@ -41,9 +44,32 @@ def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     return options
 
 
+def _comparison_arguments(argv: Sequence[str]) -> argparse.Namespace:
+    parser = Parser(add_help=False, allow_abbrev=False)  # pragma: no mutate - false/None equivalent
+    parser.add_argument("before")
+    parser.add_argument("after")
+    parser.add_argument("--json", action="store_true")
+    return parser.parse_args(argv)
+
+
+def _scan(options: argparse.Namespace) -> tuple[str, int]:
+    report = (
+        scan_repository(options.repo, options.commit)
+        if options.repo is not None
+        else scan_folder(Path(options.folder))
+    )
+    if options.json:
+        output = json.dumps(to_dict(report)) + "\n"
+    elif options.sarif:
+        output = json.dumps(to_sarif(report, render)) + "\n"
+    else:
+        output = human(report)
+    return output, exit_code(report)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
-    if args in ([], ["--help"], ["scan", "--help"]):
+    if args in ([], ["--help"], ["scan", "--help"], ["compare", "--help"]):
         print(render("cli.help"))
         return 0
     try:
@@ -52,19 +78,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(render("cli.invalid_arguments"), file=sys.stderr)
         return 2
     try:
-        report = (
-            scan_repository(options.repo, options.commit)
-            if options.repo is not None
-            else scan_folder(Path(options.folder))
+        output, code = (
+            command(Path(options.before), Path(options.after), json_output=options.json)
+            if args[0] == "compare"
+            else _scan(options)
         )
-        if options.json:
-            output = json.dumps(to_dict(report)) + "\n"
-        elif options.sarif:
-            output = json.dumps(to_sarif(report, render)) + "\n"
-        else:
-            output = human(report)
         sys.stdout.write(output)
-        return exit_code(report)
+        return code
+    except ReportInputError as error:
+        print(render(error.key, {"path": single_line(str(error))}), file=sys.stderr)
+        return 2
     except KeyboardInterrupt:
         print(render("cli.interrupted"), file=sys.stderr)
         return 130

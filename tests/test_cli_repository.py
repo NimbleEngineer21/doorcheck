@@ -81,7 +81,16 @@ def test_remote_formats_and_provenance(flag: str, capsys: pytest.CaptureFixture[
 def test_ambiguous_targets_do_not_fetch(
     args: list[str], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert cli.main(args) == 2
+    with (
+        patch(
+            "doorcheck.cli.scan_folder", side_effect=AssertionError("invalid input must not scan")
+        ),
+        patch(
+            "doorcheck.cli.scan_repository",
+            side_effect=AssertionError("invalid input must not fetch"),
+        ),
+    ):
+        assert cli.main(args) == 2
     output = capsys.readouterr()
     assert output.out == ""
     assert output.err == render("cli.invalid_arguments") + "\n"

@@ -3,8 +3,8 @@
 `doorcheck.comparison.compare(before, after)` compares the observations in two
 existing `Report` objects. It performs no I/O, downloads, source execution or
 new scanning. This library API is the foundation for showing changes between
-versions; it does not add a CLI command, notifications, moved-tag detection or
-new findings.
+versions. The offline CLI below uses the same API. There are no notifications,
+moved-tag detection or new findings.
 
 ```python
 import json
@@ -27,7 +27,8 @@ The returned `Comparison` and its `Changes` records are frozen. Added and remove
 observations are tuples containing the original objects from the corresponding
 report, so their source locations and assessment details remain available. Both
 original reports are retained, including targets, tool versions and checks.
-There is no separate comparison JSON schema; the scan report format is unchanged.
+The library returns typed objects; the CLI below has its own versioned JSON
+format. The scan report format is unchanged.
 
 ## Matching observations
 
@@ -103,3 +104,83 @@ separate file-path subject changes from `lovelace/themes` to
 These counts describe existing observations. Detection remains at 2/3 published
 file-read cases caught and zero alarms on the reference/fixed corpus. Comparing
 reports does not add detection coverage or establish that an update is safe.
+
+## Compare saved reports from the command line
+
+```console
+doorcheck compare before.json after.json
+doorcheck compare before.json after.json --json > comparison.json
+```
+
+The command runs offline and reads only the two report files. It does not scan
+source again or execute evidence, install dependencies, fetch URLs or write to
+the input files. Use `--` before report paths beginning with a dash. Standard
+input and comparison SARIF are not supported.
+
+Inputs must be version-1 report JSON files, UTF-8 encoded, at most 20 MiB each.
+The existing bounded regular-file reader refuses final-component symbolic links,
+directories, FIFOs and other nonregular files without waiting for their content.
+Parent-directory links are not prohibited. Invalid JSON, duplicate object keys
+at any depth, unsupported report fields/schema versions, invalid fingerprints,
+unknown message keys and missing message parameters are refused. Excessive
+nesting and invalid encoding produce a catalog error on stderr, no comparison
+on stdout, and exit code 2. The byte cap is not a command-wide time limit.
+
+Text puts removed observations under the before report and additions under the
+after report. Each side includes its target metadata, engine/check versions,
+check statuses and coverage problems. Changed findings retain their original
+severity words. Source fields, including check names and input-error paths, use
+safe single-line rendering; they cannot add terminal rows or control sequences.
+The text describes observations only, without claiming the source scanner's
+scope for an imported report from other tools.
+
+JSON follows the packaged
+[`comparison-v1.schema.json`](../src/doorcheck/schemas/comparison-v1.schema.json).
+It contains `schema_version: 1`, `metadata_matches`, the full `before` and `after`
+reports, and `added`/`removed` objects containing capability and finding arrays.
+The nested reports retain unchanged observations and all provenance/check data;
+the change arrays are not standalone scan reports. Non-ASCII text and terminal
+controls are JSON-escaped on stdout. Parsed data still needs safe rendering, and
+both scan and comparison files can contain source evidence: review before sharing.
+
+`metadata_matches` is true only when target names and Doorcheck versions match,
+check name/version sets match, both sides have at least one check, all checks
+are complete, and engine/check versions are nonblank. Target version, commit
+and digest changes are expected and do not make this flag false. This tests
+declared metadata, not report authenticity, equivalent scan roots or identical
+tool/rule behavior. Check these independently before treating the comparison
+as an update to one installed item. Local snapshots from differently named
+folders produce differences with `metadata_matches: false`; the pure API remains
+available for callers who validate their own comparison policy.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Metadata policy matches; no added Review/Serious finding |
+| 1 | Metadata policy matches; at least one added Review/Serious finding |
+| 2 | Metadata policy does not match, input/argument error or output failure |
+| 130 | Interrupted; results are incomplete |
+
+Coverage gaps, missing checks and nothing-to-scan statuses make the policy fail,
+even when both sides have the same status. Exit 2 takes precedence over added
+findings. Valid but limited comparisons still print their differences and full
+coverage data. Unchanged Review/Serious findings do not produce exit 1: this is
+an additions signal, not a scan verdict. A severity escalation appears as a
+removal and addition under the API's matching rules and can therefore produce
+exit 1. Neither exit 0 nor a reported removal establishes safety or a fix.
+
+### CLI checks on the published pairs
+
+The saved source reports used above were compared through the actual module
+command in both text and JSON modes. All four comparisons had matching declared
+metadata and complete checks; the inputs were not rescanned by the command.
+
+| Before → after | Added / removed findings | Exit |
+| --- | --- | --- |
+| HACS 1.9.0 → 1.10.0 | 0 / 0 | 0 |
+| Font Awesome 1.2.0 → 1.3.0 | 0 / 1 | 0 |
+| Dwains Dashboard 2.0.0 → 2.0.1 | 0 / 1 | 0 |
+| Font Awesome 1.3.0 → 1.2.0 | 1 / 0 | 1 |
+
+The reverse Font Awesome comparison adds the existing Review finding at line 19.
+The forward comparison reports its removal without claiming a fix. The HACS
+helper-flow miss remains visible in the source-evidence discussion above.

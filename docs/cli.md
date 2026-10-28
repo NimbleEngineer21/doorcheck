@@ -189,3 +189,10 @@ $ echo $?
 
 A full commit scan describes that selected snapshot; it does not establish which
 release a user has installed or whether a separate release artifact matches it.
+
+## Compare saved reports
+
+Use `doorcheck compare before.json after.json [--json]` to compare reported
+observations offline. The [comparison guide](comparison.md#compare-saved-reports-from-the-command-line)
+describes bounded input loading, the output schema, metadata/coverage checks
+and comparison exit codes. Comparison does not rescan source or establish a fix.

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nimbleengineer21/doorcheck/schemas/comparison-v1.schema.json",
+  "title": "Doorcheck comparison, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "metadata_matches",
+    "before",
+    "after",
+    "added",
+    "removed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "metadata_matches": {
+      "type": "boolean"
+    },
+    "before": {
+      "$ref": "report-v1.schema.json"
+    },
+    "after": {
+      "$ref": "report-v1.schema.json"
+    },
+    "added": {
+      "$ref": "#/$defs/observations"
+    },
+    "removed": {
+      "$ref": "#/$defs/observations"
+    }
+  },
+  "$defs": {
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capabilities",
+        "findings"
+      ],
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "report-v1.schema.json#/$defs/capability"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "report-v1.schema.json#/$defs/finding"
+          }
+        }
+      }
+    }
+  }
+}
