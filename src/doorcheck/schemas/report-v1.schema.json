@@ -265,6 +265,7 @@
             "ha_private_file",
             "ha_service_call",
             "web_view",
+            "webhook",
             "replaces_code",
             "env_read",
             "date_check",

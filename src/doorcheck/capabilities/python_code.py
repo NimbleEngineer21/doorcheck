@@ -19,7 +19,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 from urllib.parse import urlsplit
 
-from doorcheck.capabilities import http_calls
+from doorcheck.capabilities import calls
 from doorcheck.capabilities.model import COMPUTED, Capability, Kind
 from doorcheck.capabilities.python_scopes import Scope, parameters, scopes
 from doorcheck.findings import Location
@@ -132,7 +132,7 @@ def analyze(source: str | bytes, path: str) -> list[Capability]:
             Capability(kind, location, subject, attrs)
             for kind, subject, attrs in reader(node, contexts[id(node)])
         )
-    found.extend(http_calls.analyze(tree, path))
+    found.extend(calls.analyze(tree, path))
     return found
 
 

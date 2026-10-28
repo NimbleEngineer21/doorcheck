@@ -26,6 +26,7 @@
   "capability.symlink": "Includes a symbolic link: {subject}. Doorcheck did not follow it.",
   "capability.system_module": "Imports a module with system access: {subject}.",
   "capability.web_view": "Defines a web view: {subject}. Authentication depends on its configuration.",
+  "capability.webhook": "Registers a Home Assistant webhook: {subject}. Local-only option: {local_only}. This does not establish network reachability.",
   "cli.capability": "Observation at {location}: {message}",
   "cli.check": "{check}: {status}",
   "cli.commit": "Commit: {commit}",
@@ -115,5 +116,9 @@
   "status.failed": "Scan failed",
   "status.nothing_to_scan": "Nothing to scan",
   "status.partial": "Scan partly completed",
-  "value.computed": "computed at runtime"
+  "value.computed": "computed at runtime",
+  "value.false": "False",
+  "value.omitted": "not set in this call",
+  "value.true": "True",
+  "value.unresolved": "not statically resolved"
 }

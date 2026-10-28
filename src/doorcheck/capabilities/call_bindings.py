@@ -1,4 +1,4 @@
-"""Conservative lexical identities for imported HTTP APIs and local clients."""
+"""Conservative lexical identities for imported APIs and local HTTP clients."""
 
 import ast
 from collections import Counter

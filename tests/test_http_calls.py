@@ -346,7 +346,7 @@ def test_starred_arguments_after_url_do_not_hide_the_explicit_position() -> None
 
 
 def test_binding_resolution_positions_and_unknown_roots() -> None:
-    from doorcheck.capabilities.http_bindings import Binding, qualified
+    from doorcheck.capabilities.call_bindings import Binding, qualified
 
     node = ast.parse("client", mode="eval").body
     assert (
@@ -394,7 +394,7 @@ def test_observations_round_trip_in_version_one_report() -> None:
 
 
 def test_dotted_import_aliases_and_relative_import_provenance() -> None:
-    from doorcheck.capabilities.http_bindings import _imports, _stores
+    from doorcheck.capabilities.call_bindings import _imports, _stores
 
     assert (
         requests("import requests.api as api\napi.get('https://example.invalid')")[0].attrs[
