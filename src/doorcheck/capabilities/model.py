@@ -26,6 +26,7 @@ class Kind(StrEnum):
     HA_PRIVATE_FILE = "ha_private_file"  # names a file with logins, secrets or history
     HA_SERVICE_CALL = "ha_service_call"  # calls a Home Assistant action, such as notify or lock
     WEB_VIEW = "web_view"  # serves a web address from Home Assistant, maybe without login
+    HA_PANEL = "ha_panel"  # registers a Home Assistant custom panel
     WEBHOOK = "webhook"  # registers a Home Assistant webhook
     REPLACES_CODE = "replaces_code"  # replaces a function or value of an imported module
     ENV_READ = "env_read"  # reads an environment variable

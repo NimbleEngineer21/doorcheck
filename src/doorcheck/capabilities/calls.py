@@ -3,7 +3,7 @@
 import ast
 from collections.abc import Mapping
 
-from doorcheck.capabilities import call_bindings, http_values, webhooks
+from doorcheck.capabilities import call_bindings, http_values, panels, webhooks
 from doorcheck.capabilities.model import COMPUTED, Capability, Kind
 from doorcheck.capabilities.python_scopes import scopes
 from doorcheck.findings import Location
@@ -39,6 +39,8 @@ def _call(
     identity = call_bindings.qualified(node.func, bindings)
     if identity == webhooks.REGISTER:
         return [webhooks.observation(node, path)]
+    if identity == panels.REGISTER:
+        return [panels.observation(node, path)]
     if not _operation(identity):
         return []
     name = identity.rpartition(".")[2]
