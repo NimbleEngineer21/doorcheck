@@ -11,7 +11,7 @@ from importlib.resources import files
 from string import Formatter
 from types import MappingProxyType
 
-from doorcheck.capabilities.model import COMPUTED, Capability
+from doorcheck.capabilities.model import COMPUTED, Capability, Kind
 from doorcheck.errors import DoorcheckError
 from doorcheck.findings import MESSAGE_KEY
 from doorcheck.text import display_safe
@@ -75,4 +75,14 @@ def render_capability(capability: Capability) -> str:
     subject = capability.subject
     if subject == COMPUTED:
         subject = render("value.computed")
-    return render(f"capability.{capability.kind.value}", {"subject": subject})
+    params = {"subject": subject}
+    if capability.kind is Kind.WEBHOOK:
+        keys: dict[str | None, str] = {
+            "true": "value.true",
+            "false": "value.false",
+            "omitted": "value.omitted",
+        }
+        params["local_only"] = render(
+            keys.get(capability.attrs.get("local_only"), "value.unresolved")
+        )
+    return render(f"capability.{capability.kind.value}", params)

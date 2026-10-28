@@ -23,7 +23,7 @@ def test_catalog_contains_every_literal_key_in_engine() -> None:
         for node in ast.walk(ast.parse(path.read_text()))
         if isinstance(node, ast.Constant)
         and isinstance(node.value, str)
-        and node.value.startswith(("finding.", "problem.", "presentation.", "cli."))
+        and node.value.startswith(("finding.", "problem.", "presentation.", "cli.", "value."))
     }
     data = json.loads(files("doorcheck.presentation").joinpath("tokens.json").read_bytes())
     keys |= {
@@ -114,9 +114,10 @@ def test_extra_context_does_not_break_rendering() -> None:
 @pytest.mark.parametrize("kind", Kind)
 def test_capability_uses_its_kind_and_subject(kind: Kind) -> None:
     capability = Capability(kind, Location("file.py", 1), "subject\u202e")
-    assert render_capability(capability) == render(
-        f"capability.{kind.value}", {"subject": "subject\u202e"}
-    )
+    params = {"subject": "subject\u202e"}
+    if kind is Kind.WEBHOOK:
+        params["local_only"] = render("value.unresolved")
+    assert render_capability(capability) == render(f"capability.{kind.value}", params)
 
 
 def test_computed_capability_subject() -> None:

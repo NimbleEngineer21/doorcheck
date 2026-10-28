@@ -1,24 +1,24 @@
-"""Source observations of HTTP request calls; never proof of network traffic."""
+"""Source observations of supported imported APIs; never proof of runtime calls."""
 
 import ast
 from collections.abc import Mapping
 
-from doorcheck.capabilities import http_bindings, http_values
+from doorcheck.capabilities import call_bindings, http_values, webhooks
 from doorcheck.capabilities.model import COMPUTED, Capability, Kind
 from doorcheck.capabilities.python_scopes import scopes
 from doorcheck.findings import Location
 
 METHODS = frozenset({"get", "head", "options", "post", "put", "patch", "delete"})
 MODULES = frozenset({"requests", "requests.api", "httpx"})
-CLIENTS = frozenset(http_bindings.FACTORIES.values())
+CLIENTS = frozenset(call_bindings.FACTORIES.values())
 
 
 def analyze(tree: ast.Module, path: str) -> list[Capability]:
-    contexts: dict[int, http_bindings.Bindings] = {}
+    contexts: dict[int, call_bindings.Bindings] = {}
     found = []
     for scope in scopes(tree):
         parent = contexts[id(scope.parent.owner)] if scope.parent else {}
-        bindings = http_bindings.bindings(scope, parent)
+        bindings = call_bindings.bindings(scope, parent)
         contexts[id(scope.owner)] = bindings
         for node in scope.nodes:
             if isinstance(node, ast.Call):
@@ -34,9 +34,11 @@ def _operation(identity: str) -> bool:
 
 
 def _call(
-    node: ast.Call, bindings: Mapping[str, http_bindings.Binding], path: str
+    node: ast.Call, bindings: Mapping[str, call_bindings.Binding], path: str
 ) -> list[Capability]:
-    identity = http_bindings.qualified(node.func, bindings)
+    identity = call_bindings.qualified(node.func, bindings)
+    if identity == webhooks.REGISTER:
+        return [webhooks.observation(node, path)]
     if not _operation(identity):
         return []
     name = identity.rpartition(".")[2]

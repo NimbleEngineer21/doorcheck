@@ -119,3 +119,7 @@ Unsupported: client fields such as `self.session`, clients passed as arguments,
 URL-variable propagation, arbitrary wrappers, method aliases, WebSockets,
 JavaScript and whole-program or runtime analysis. Branch-dependent and rebound
 clients can be omitted. Zero observations does not establish no network access.
+
+HTTP and [webhook](webhooks.md) call observations share the conservative import
+identity traversal in `capabilities/calls.py` and `capabilities/call_bindings.py`.
+This internal generalization does not change HTTP API selection or host facts.
