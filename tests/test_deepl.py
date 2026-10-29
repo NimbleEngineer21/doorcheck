@@ -568,9 +568,9 @@ def test_preflight_visits_only_the_actual_billed_batches(catalogs, monkeypatch):
     real_payload = deepl.payload
     builds = []
 
-    def record(texts, target, settings):
+    def record(texts, target, settings, glossary=None):
         builds.append((list(texts), target))
-        return real_payload(texts, target, settings)
+        return real_payload(texts, target, settings, glossary)
 
     monkeypatch.setattr(deepl, "payload", record)
     deepl._request_sizes(rows, SETTINGS)

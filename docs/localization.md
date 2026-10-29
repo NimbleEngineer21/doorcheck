@@ -73,6 +73,10 @@ security find-generic-password -a "$USER" -s "doorcheck.deepl-api-key" -w |
   gh secret set DEEPL_API_KEY --repo NimbleEngineer21/doorcheck
 ```
 
+The credential needs text-translation access and permission to read account usage
+(`usage:read`). A configured glossary also needs glossary read access. A quota
+permission failure stops the refresh before translating.
+
 Local refresh uses `--keychain`. Actions reads `DEEPL_API_KEY` from its secret.
 An explicit environment variable is also supported for other local automation.
 No credential is required to scan, render, validate or estimate translations.
@@ -127,6 +131,70 @@ seed is not automatically installed, committed or merged. Do not count an
 unavailable target as translated or copy another dialect into its file merely
 to obtain a passing count.
 
+## Preferred translations with DeepL glossaries
+
+Protected terms and glossaries serve different purposes. `protected_terms` keeps
+product names, command syntax and placeholders unchanged. A DeepL glossary gives
+preferred translations for ordinary terminology, such as a chosen translation of
+“capability.” Glossaries do not override protected terms, which remain inside
+ignored XML slots. The refresh request passes the configured `glossary_id` together
+with explicit English source and the normal target-language code.
+
+Add an optional `glossaries` object to `translation-context.json`. Each key is a
+Home Assistant locale; each binding contains an existing DeepL v3 glossary ID and
+the complete reviewed English-to-target dictionary. For example:
+
+```json
+"glossaries": {
+  "de": {
+    "id": "def3a26b-3e84-45b3-84ae-0c0aaf3525f7",
+    "entries": {"capability": "Fähigkeit"}
+  }
+}
+```
+
+The ID and entry above are illustrative, not an active Doorcheck glossary.
+Create or select a glossary accessible to the API credential, then record its
+real ID and the complete matching dictionary. A multilingual glossary can have
+several dictionaries and its ID can appear in several locale bindings. DeepL
+uses root language pairs for glossary dictionaries: an English-to-Portuguese
+pair can be used with the configured Portuguese variants. Locale bindings stay
+explicit so different variants can choose different terminology or IDs.
+
+Before any translation request, the tool checks glossary support for both source
+and target, retrieves the v3 metadata and dictionary, and compares the entries
+with the reviewed configuration. Wrong language pairs, unexpected entries,
+missing dictionaries, unsupported features and unreadable glossaries stop the
+refresh. A configured glossary is never silently omitted. The tooling reads
+existing glossaries; it does not create, edit or delete account glossaries.
+
+The full glossary configuration is part of the shared source/context receipt.
+Changing an ID or preferred term currently invalidates translations across all
+shipped locales, so budget the resulting refresh. Account-side edits alone are
+not a reviewed configuration change and cause the next preflight to refuse.
+Treat a bound glossary as immutable during a run; create a new glossary version
+and update its reviewed binding when terminology changes. Offline PR checks do
+not contact DeepL, while local and Actions refresh use the same bindings from
+the reviewed context. No glossary is active until a binding is configured. Bindings support at most
+1,000 entries, with a limit of 1,024 UTF-8 bytes per source or target phrase.
+
+## Review the seed before choosing overrides
+
+Start with the seed, then review the translated messages against their English
+meaning. Pay particular attention to “finding” as a reported observation,
+“coverage gap” as missing analysis, “capability” as something source can do, and
+“Review” as an attention level rather than a product rating. Preserve negation
+and uncertainty: “does not establish,” “may,” and “not statically resolved” must
+not become claims that behavior occurred or that code is safe. Compare Home
+Assistant terms with its official localized UI where the concepts match.
+
+Add a glossary preference when the output reveals a clear recurring terminology
+problem. Record the observed wording, the intended meaning and the chosen
+replacement in the translation PR. A glossary is not a substitute for fixing a
+whole sentence or clarifying ambiguous English. After updating the reviewed
+binding, refresh affected catalogs, inspect the revised output and run the
+normal checks. Do not invent glossary entries merely to activate the feature.
+
 ## Contributor English changes
 
 A source/context change invalidates affected translations in PR checks. The
@@ -152,5 +220,6 @@ that every registered Home Assistant locale is available from DeepL.
 
 - [Home Assistant internationalization guidance](https://contributors.home-assistant.io/translate/guides/developers/)
 - [DeepL language capabilities](https://developers.deepl.com/docs/languages/using-the-languages-api)
+- [DeepL glossary API specification](https://github.com/DeepL/openapi/blob/main/openapi.yaml)
 - [DeepL XML handling](https://developers.deepl.com/docs/translate/translating-xml)
 - [DeepL character estimation](https://developers.deepl.com/docs/best-practices/estimating-character-usage)

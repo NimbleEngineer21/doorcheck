@@ -47,13 +47,21 @@ def resource(name: str) -> Any:
 
 def context() -> dict[str, Any]:
     value = resource("translation-context.json")
-    if not isinstance(value, dict) or set(value) != {"revision", "description", "protected_terms"}:
+    if (
+        not isinstance(value, dict)
+        or not {"revision", "description", "protected_terms"} <= set(value)
+        or set(value) - {"revision", "description", "protected_terms", "glossaries"}
+    ):
         raise MessageError("invalid translation context")
     if not all(isinstance(value[k], str) and value[k] for k in ("revision", "description")):
         raise MessageError("invalid translation context text")
     terms = value["protected_terms"]
     if not isinstance(terms, list) or not all(isinstance(term, str) and term for term in terms):
         raise MessageError("invalid protected terms")
+    from doorcheck.messages.glossaries import bindings
+
+    if "glossaries" in value:
+        bindings(value, locales())
     return value
 
 

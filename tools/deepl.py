@@ -24,6 +24,7 @@ from doorcheck.messages.localization import (
     text_hash,
     validate_text,
 )
+from tools.deepl_glossaries import glossary_id, verify
 from tools.deepl_transport import Client, credential
 from tools.localization import MESSAGES
 
@@ -172,8 +173,10 @@ def plan(codes: list[str], settings: Mapping[str, Any]) -> tuple[dict[str, dict[
     return rows, total
 
 
-def payload(texts: list[str], target: str, settings: Mapping[str, Any]) -> dict[str, Any]:
-    return {
+def payload(
+    texts: list[str], target: str, settings: Mapping[str, Any], glossary: str | None = None
+) -> dict[str, Any]:
+    result = {
         "text": texts,
         "source_lang": "EN",
         "target_lang": target,
@@ -183,6 +186,10 @@ def payload(texts: list[str], target: str, settings: Mapping[str, Any]) -> dict[
         "context": settings["description"],
         "show_billed_characters": True,
     }
+
+    if glossary is not None:
+        result["glossary_id"] = glossary
+    return result
 
 
 def _translations(response: Any, count: int) -> list[Any]:
@@ -205,14 +212,18 @@ def _receipt(item: Any, key: str, tokens: list[str], settings: Mapping[str, Any]
 
 
 def translate(
-    client: Client, target: str, pending: list[str], settings: Mapping[str, Any]
+    client: Client,
+    target: str,
+    pending: list[str],
+    settings: Mapping[str, Any],
+    glossary: str | None = None,
 ) -> dict[str, Any]:
     result = {}
     for offset in range(0, len(pending), 50):
         batch = pending[offset : offset + 50]
         prepared = [protect(ENGLISH[key], settings) for key in batch]
         response = client.request(
-            "/v2/translate", payload([p[0] for p in prepared], target, settings)
+            "/v2/translate", payload([p[0] for p in prepared], target, settings, glossary)
         )
         translated = _translations(response, len(batch))
         for index, key in enumerate(batch):
@@ -243,7 +254,11 @@ def _request_sizes(rows: dict[str, Any], settings: Mapping[str, Any]) -> None:
                 protect(ENGLISH[key], settings)[0] for key in row["pending"][offset : offset + 50]
             ]
             size = len(
-                json.dumps(payload(texts, registry[code]["deepl_target"], settings)).encode()
+                json.dumps(
+                    payload(
+                        texts, registry[code]["deepl_target"], settings, glossary_id(code, settings)
+                    )
+                ).encode()
             )
             if size > 120_000:
                 raise MessageError("translation batch exceeds request byte limit")
@@ -257,8 +272,10 @@ def refresh(
     ceiling: int,
     available_only: bool,
 ) -> None:
-    support = supported(client.request("/v3/languages?resource=translate_text"))
+    languages = client.request("/v3/languages?resource=translate_text")
+    support = supported(languages)
     eligible, gaps = _eligible(rows, support, available_only)
+    verify(client, set(rows), settings, locales(), languages)
     required = sum(row["characters"] for row in eligible.values())
     if required > ceiling or required > remaining(client.request("/v2/usage")):
         raise MessageError("translation estimate exceeds explicit budget or account quota")
@@ -273,7 +290,13 @@ def _complete(client: Client, rows: dict[str, Any], settings: Mapping[str, Any])
     for code, row in rows.items():
         messages = {
             **row["kept"],
-            **translate(client, registry[code]["deepl_target"], row["pending"], settings),
+            **translate(
+                client,
+                registry[code]["deepl_target"],
+                row["pending"],
+                settings,
+                glossary_id(code, settings),
+            ),
         }
         data = {"locale": code, "messages": messages}
         catalog(data, code, ENGLISH, settings)
@@ -310,8 +333,12 @@ def save(path: Path, value: Any) -> None:
         temporary.replace(path)
 
 
-def provider_check(client: Client, rows: dict[str, dict[str, Any]]) -> None:
-    support = supported(client.request("/v3/languages?resource=translate_text"))
+def provider_check(
+    client: Client, rows: dict[str, dict[str, Any]], settings: Mapping[str, Any] | None = None
+) -> None:
+    languages = client.request("/v3/languages?resource=translate_text")
+    support = supported(languages)
+    verify(client, set(rows), settings or {}, locales(), languages)
     eligible, gaps = _eligible(rows, support, True)
     quota = remaining(client.request("/v2/usage"))
     print(
@@ -341,7 +368,7 @@ def main(argv: list[str]) -> int:
         for code, row in rows.items():
             print(f"{code}: {len(row['pending'])} messages, {row['characters']} characters")
         if args.check_provider:
-            provider_check(Client(credential(args.keychain), free=args.free), rows)
+            provider_check(Client(credential(args.keychain), free=args.free), rows, settings)
         if args.write:
             refresh(
                 Client(credential(args.keychain), free=args.free),

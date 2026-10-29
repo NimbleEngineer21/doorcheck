@@ -3,12 +3,14 @@
 import getpass
 import json
 import os
+import re
 import subprocess
 import urllib.error
 import urllib.request
 from typing import Any
 
 from doorcheck.messages import MessageError
+from doorcheck.messages.glossaries import UUID
 from doorcheck.messages.localization import MAX_JSON_BYTES, decode
 
 MAX_RESPONSE = MAX_JSON_BYTES
@@ -56,7 +58,17 @@ class Client:
         self.key = key
 
     def request(self, path: str, payload: dict[str, Any] | None = None) -> Any:
-        if path not in ("/v3/languages?resource=translate_text", "/v2/usage", "/v2/translate"):
+        glossary = re.fullmatch(
+            r"/v3/glossaries/" + UUID + r"(?:/entries\?source_lang=EN&target_lang=[A-Z]{2,3})?",
+            path,
+        )
+        if glossary and payload is not None:
+            raise MessageError("glossary resources are read only")
+        if not glossary and path not in (
+            "/v3/languages?resource=translate_text",
+            "/v2/usage",
+            "/v2/translate",
+        ):
             raise MessageError("unsupported DeepL resource")
         data = None if payload is None else json.dumps(payload).encode()
         if data is not None and len(data) > 120_000:
