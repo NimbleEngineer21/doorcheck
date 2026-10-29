@@ -7,8 +7,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Never
 
-from doorcheck.cli_compare import ReportInputError, command
+from doorcheck.cli_compare import command
+from doorcheck.cli_hosts import command as host_command
 from doorcheck.cli_output import human, single_line
+from doorcheck.cli_report import ReportInputError
 from doorcheck.cli_scan import exit_code, scan_folder, scan_release, scan_repository
 from doorcheck.messages import render
 from doorcheck.report import Report, to_dict
@@ -27,6 +29,8 @@ class Parser(argparse.ArgumentParser):
 def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     if argv[0] == "compare":
         return _comparison_arguments(argv[1:])
+    if argv[0] == "hosts":
+        return _host_arguments(argv[1:])
     if argv[0] != "scan":
         raise UsageError
     # False and None both disable these argparse switches.
@@ -55,6 +59,13 @@ def _comparison_arguments(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _host_arguments(argv: Sequence[str]) -> argparse.Namespace:
+    parser = Parser(add_help=False, allow_abbrev=False)  # pragma: no mutate - false/None equivalent
+    parser.add_argument("report")
+    parser.add_argument("--json", action="store_true")
+    return parser.parse_args(argv)
+
+
 def _repository(options: argparse.Namespace) -> Report:
     if options.tag is not None:
         return scan_release(options.repo, options.tag)
@@ -74,7 +85,7 @@ def _scan(options: argparse.Namespace) -> tuple[str, int]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
-    if args in ([], ["--help"], ["scan", "--help"], ["compare", "--help"]):
+    if args in ([], ["--help"], ["scan", "--help"], ["compare", "--help"], ["hosts", "--help"]):
         print(render("cli.help"))
         return 0
     try:
@@ -83,11 +94,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(render("cli.invalid_arguments"), file=sys.stderr)
         return 2
     try:
-        output, code = (
-            command(Path(options.before), Path(options.after), json_output=options.json)
-            if args[0] == "compare"
-            else _scan(options)
-        )
+        if args[0] == "hosts":
+            output, code = host_command(Path(options.report), json_output=options.json)
+        elif args[0] == "compare":
+            output, code = command(
+                Path(options.before), Path(options.after), json_output=options.json
+            )
+        else:
+            output, code = _scan(options)
         sys.stdout.write(output)
         return code
     except ReportInputError as error:

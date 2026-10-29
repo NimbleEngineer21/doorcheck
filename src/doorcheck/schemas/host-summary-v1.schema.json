@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nimbleengineer21/doorcheck/schemas/host-summary-v1.schema.json",
+  "title": "Doorcheck host summary, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report",
+    "hosts",
+    "unresolved"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "report": {
+      "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json"
+    },
+    "hosts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "mentions",
+          "requests",
+          "frontend_scripts"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json#/$defs/capability"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "network_host"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json#/$defs/capability"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "http_request"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "frontend_scripts": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json#/$defs/capability"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "ha_frontend_script"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "unresolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mentions",
+        "requests",
+        "frontend_scripts"
+      ],
+      "properties": {
+        "mentions": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json#/$defs/capability"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "network_host"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "requests": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json#/$defs/capability"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "http_request"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "frontend_scripts": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://github.com/nimbleengineer21/doorcheck/schemas/report-v1.schema.json#/$defs/capability"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "ha_frontend_script"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -251,3 +251,11 @@ Use `doorcheck compare before.json after.json [--json]` to compare reported
 observations offline. The [comparison guide](comparison.md#compare-saved-reports-from-the-command-line)
 describes bounded input loading, the output schema, metadata/coverage checks
 and comparison exit codes. Comparison does not rescan source or establish a fix.
+
+## Summarize host evidence
+
+`doorcheck hosts report.json [--json]` groups existing host mentions, recognized
+HTTP request source and frontend script registrations without rescanning. It
+retains the original report, unresolved destinations, check coverage and findings.
+See the [host-summary guide](host-summary.md) for exact grouping, JSON schema,
+coverage-first exit codes and measured source evidence. Host names do not prove traffic.

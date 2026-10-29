@@ -1,5 +1,6 @@
 """Plain terminal output. Source values cannot add terminal control sequences."""
 
+from doorcheck.capabilities.model import Capability
 from doorcheck.findings import Location
 from doorcheck.messages import render, render_capability
 from doorcheck.report import Report
@@ -18,7 +19,7 @@ def _location(location: Location | None) -> str:
     return single_line(f"{location.path}:{location.line}")
 
 
-def report_body(report: Report) -> str:
+def report_body(report: Report, *, capabilities: tuple[Capability, ...] | None = None) -> str:
     lines = [render("cli.target", {"target": single_line(report.target.name)})]
     if report.target.version is not None:
         lines.append(render("cli.version", {"version": single_line(report.target.version)}))
@@ -55,7 +56,8 @@ def report_body(report: Report) -> str:
                 },
             )
         )
-    for capability in report.capabilities:
+    selected = report.capabilities if capabilities is None else capabilities
+    for capability in selected:
         lines.append(
             render(
                 "cli.capability",
