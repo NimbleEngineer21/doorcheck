@@ -1,6 +1,7 @@
 """Built-in scan orchestration for the command-line surface."""
 
 import stat
+from collections.abc import Callable
 from dataclasses import replace
 from importlib.metadata import version
 from pathlib import Path
@@ -8,19 +9,28 @@ from tempfile import TemporaryDirectory
 
 from doorcheck import capabilities, rules
 from doorcheck.checks import Check, Problem, Status, status_for
-from doorcheck.fetch import FetchError, from_commit
+from doorcheck.fetch import FetchError, Installed, from_commit, from_repo
 from doorcheck.findings import Severity
 from doorcheck.report import Report, Target
 
 
 def scan_repository(repo: str, commit: str) -> Report:
     """Fetch an explicit commit, scan installed files, then remove the snapshot."""
+    return _remote(repo, commit, from_commit)
+
+
+def scan_release(repo: str, tag: str) -> Report:
+    """Fetch an explicit tag and scan the selected installed files, including assets."""
+    return _remote(repo, tag, from_repo)
+
+
+def _remote(repo: str, revision: str, fetch: Callable[[str, str, Path], Installed]) -> Report:
     installed_version = version("doorcheck")  # pragma: no mutate - package names ignore case
     try:
         with TemporaryDirectory() as temporary:
             # The private child name has no effect on scan results or cleanup.
             destination = Path(temporary) / "source"  # pragma: no mutate - arbitrary private name
-            installed = from_commit(repo, commit, destination)
+            installed = fetch(repo, revision, destination)
             report = scan_folder(installed.root)
             fetched = Check("fetch", installed_version, Status.COMPLETE)
             return replace(report, target=installed.target, checks=(fetched, *report.checks))

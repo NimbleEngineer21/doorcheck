@@ -20,6 +20,8 @@ def _location(location: Location | None) -> str:
 
 def report_body(report: Report) -> str:
     lines = [render("cli.target", {"target": single_line(report.target.name)})]
+    if report.target.version is not None:
+        lines.append(render("cli.version", {"version": single_line(report.target.version)}))
     if report.target.commit is not None:
         lines.append(render("cli.commit", {"commit": single_line(report.target.commit)}))
     if report.target.artifact_sha256 is not None:
