@@ -80,6 +80,7 @@ def render_capability(capability: Capability) -> str:
         Kind.WEBHOOK: "local_only",
         Kind.HA_PANEL: "require_admin",
         Kind.HA_FRONTEND_SCRIPT: "es5",
+        Kind.HA_STATIC_PATH: "cache_headers",
     }
     if capability.kind in options:
         option = options[capability.kind]
@@ -89,4 +90,8 @@ def render_capability(capability: Capability) -> str:
             "omitted": "value.omitted",
         }
         params[option] = render(keys.get(capability.attrs.get(option), "value.unresolved"))
+    if capability.kind is Kind.HA_STATIC_PATH:
+        for name in ("url_path", "path"):
+            value = capability.attrs.get(name, COMPUTED)
+            params[name] = render("value.unresolved") if value == COMPUTED else value
     return render(f"capability.{capability.kind.value}", params)

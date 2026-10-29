@@ -121,6 +121,10 @@ def test_capability_uses_its_kind_and_subject(kind: Kind) -> None:
         params["require_admin"] = render("value.unresolved")
     if kind is Kind.HA_FRONTEND_SCRIPT:
         params["es5"] = render("value.unresolved")
+    if kind is Kind.HA_STATIC_PATH:
+        params.update(
+            {name: render("value.unresolved") for name in ("url_path", "path", "cache_headers")}
+        )
     assert render_capability(capability) == render(f"capability.{kind.value}", params)
 
 

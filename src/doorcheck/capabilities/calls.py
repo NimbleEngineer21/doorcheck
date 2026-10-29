@@ -3,7 +3,14 @@
 import ast
 from collections.abc import Mapping
 
-from doorcheck.capabilities import call_bindings, frontend, http_values, panels, webhooks
+from doorcheck.capabilities import (
+    call_bindings,
+    frontend,
+    http_values,
+    panels,
+    static_paths,
+    webhooks,
+)
 from doorcheck.capabilities.model import COMPUTED, Capability, Kind
 from doorcheck.capabilities.python_scopes import scopes
 from doorcheck.findings import Location
@@ -43,6 +50,8 @@ def _call(
         return [panels.observation(node, path)]
     if identity == frontend.REGISTER:
         return [frontend.observation(node, path)]
+    if identity in static_paths.IDENTITIES:
+        return [static_paths.observation(node, path)]
     if not _operation(identity):
         return []
     name = identity.rpartition(".")[2]
