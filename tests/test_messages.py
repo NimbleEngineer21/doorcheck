@@ -119,6 +119,8 @@ def test_capability_uses_its_kind_and_subject(kind: Kind) -> None:
         params["local_only"] = render("value.unresolved")
     if kind is Kind.HA_PANEL:
         params["require_admin"] = render("value.unresolved")
+    if kind is Kind.HA_FRONTEND_SCRIPT:
+        params["es5"] = render("value.unresolved")
     assert render_capability(capability) == render(f"capability.{kind.value}", params)
 
 
