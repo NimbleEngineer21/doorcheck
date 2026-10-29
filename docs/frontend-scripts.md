@@ -36,7 +36,9 @@ conservative lexical resolver as HTTP, [webhooks](webhooks.md) and
 imports and wildcard ambiguity suppress uncertain identities. Assigned function
 aliases, wrappers, instance fields, dynamic attribute access and runtime import
 resolution remain unsupported. `remove_extra_js_url`, other frontend APIs,
-YAML resources, static paths and JavaScript semantics are separate work.
+YAML resources, static-path registration calls and JavaScript semantics remain
+separate work. Imported [static-path configurations](static-paths.md) are
+observed separately.
 
 The existing AST, file/byte/time limits and coverage reporting are reused. No
 second parse, new dependency or network/execution path is added. Other source

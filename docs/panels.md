@@ -24,9 +24,9 @@ conservative import analysis as [webhooks](webhooks.md) and
 members, repeated imports and wildcard ambiguity suppress uncertain identities.
 Assigned function aliases, wrappers, instance fields, runtime imports and
 variables holding option values remain unresolved. Other panel APIs, YAML panel
-configuration, static paths and analysis of the panel's JavaScript remain
+configuration, static-path registration calls and analysis of the panel's JavaScript remain
 separate work. [Extra frontend JavaScript registrations](frontend-scripts.md)
-are observed separately.
+and [static-path configurations](static-paths.md) are observed separately.
 
 Panel names, URLs, configuration, icons and source snippets are not copied into
 this observation. Other readers still operate independently, so reports may

@@ -27,6 +27,7 @@
   "capability.system_module": "Imports a module with system access: {subject}.",
   "capability.web_view": "Defines a web view: {subject}. Authentication depends on its configuration.",
   "capability.ha_frontend_script": "Source registers extra frontend JavaScript with destination {subject}. ES5 option: {es5}. This does not establish that the script was loaded or executed.",
+  "capability.ha_static_path": "Source constructs a Home Assistant static-path configuration: {subject}. URL path: {url_path}. Resource path: {path}. Cache-headers option: {cache_headers}. This does not establish registration, authentication or network reachability.",
   "capability.ha_panel": "Source calls the Home Assistant custom-panel registration API: {subject}. Admin-only option: {require_admin}. This does not establish access control for the panel or its backend.",
   "capability.webhook": "Registers a Home Assistant webhook: {subject}. Local-only option: {local_only}. This does not establish network reachability.",
   "cli.capability": "Observation at {location}: {message}",

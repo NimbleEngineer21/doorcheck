@@ -59,9 +59,10 @@ evidence and should be reviewed before sharing.
 
 The existing file, byte and scan-time budgets and coverage-problem handling
 still apply. There is no second parse or duplicate import-binding pass for
-webhooks. JavaScript semantics, YAML webhook triggers, static paths and handler
+webhooks. JavaScript semantics, YAML webhook triggers, static-path registration calls and handler
 authentication analysis remain separate work. [Custom-panel registration observations](panels.md) use the same import analysis.
 [Extra frontend JavaScript registrations](frontend-scripts.md) are also observed separately.
+Imported [static-path configurations](static-paths.md) are observed separately.
 The version-1 report schema adds the new capability kind; older readers
 reject an unknown kind instead of silently discarding it. Comparing an older
 report with a newer reader's report can show added observations because reader

@@ -266,6 +266,7 @@
             "ha_service_call",
             "web_view",
             "ha_frontend_script",
+            "ha_static_path",
             "ha_panel",
             "webhook",
             "replaces_code",

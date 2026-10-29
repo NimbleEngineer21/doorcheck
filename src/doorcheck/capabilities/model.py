@@ -27,6 +27,7 @@ class Kind(StrEnum):
     HA_SERVICE_CALL = "ha_service_call"  # calls a Home Assistant action, such as notify or lock
     WEB_VIEW = "web_view"  # serves a web address from Home Assistant, maybe without login
     HA_FRONTEND_SCRIPT = "ha_frontend_script"  # registers JavaScript for the frontend
+    HA_STATIC_PATH = "ha_static_path"  # constructs a static-path configuration
     HA_PANEL = "ha_panel"  # registers a Home Assistant custom panel
     WEBHOOK = "webhook"  # registers a Home Assistant webhook
     REPLACES_CODE = "replaces_code"  # replaces a function or value of an imported module
