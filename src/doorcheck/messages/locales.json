@@ -1,0 +1,326 @@
+{
+  "upstream_revision": "27489f188eb85f21a428a44242879c8c038b2448",
+  "upstream_path": "src/translations/translationMetadata.json",
+  "locales": {
+    "af": {
+      "name": "Afrikaans",
+      "rtl": false,
+      "deepl_target": "af"
+    },
+    "ar": {
+      "name": "العربية",
+      "rtl": true,
+      "deepl_target": "ar"
+    },
+    "bg": {
+      "name": "Български",
+      "rtl": false,
+      "deepl_target": "bg"
+    },
+    "bn": {
+      "name": "বাংলা",
+      "rtl": false,
+      "deepl_target": "bn"
+    },
+    "bs": {
+      "name": "Bosanski",
+      "rtl": false,
+      "deepl_target": "bs"
+    },
+    "ca": {
+      "name": "Català",
+      "rtl": false,
+      "deepl_target": "ca"
+    },
+    "cs": {
+      "name": "Čeština",
+      "rtl": false,
+      "deepl_target": "cs"
+    },
+    "cy": {
+      "name": "Cymraeg",
+      "rtl": false,
+      "deepl_target": "cy"
+    },
+    "da": {
+      "name": "Dansk",
+      "rtl": false,
+      "deepl_target": "da"
+    },
+    "de": {
+      "name": "Deutsch",
+      "rtl": false,
+      "deepl_target": "de"
+    },
+    "el": {
+      "name": "Ελληνικά",
+      "rtl": false,
+      "deepl_target": "el"
+    },
+    "en": {
+      "name": "English",
+      "rtl": false,
+      "deepl_target": null
+    },
+    "en-GB": {
+      "name": "English (GB)",
+      "rtl": false,
+      "deepl_target": "en-GB"
+    },
+    "eo": {
+      "name": "Esperanto",
+      "rtl": false,
+      "deepl_target": "eo"
+    },
+    "es": {
+      "name": "Español",
+      "rtl": false,
+      "deepl_target": "es"
+    },
+    "es-419": {
+      "name": "Español (Latin America)",
+      "rtl": false,
+      "deepl_target": "es-419"
+    },
+    "et": {
+      "name": "Eesti",
+      "rtl": false,
+      "deepl_target": "et"
+    },
+    "eu": {
+      "name": "Euskara",
+      "rtl": false,
+      "deepl_target": "eu"
+    },
+    "fa": {
+      "name": "فارسی",
+      "rtl": true,
+      "deepl_target": "fa"
+    },
+    "fi": {
+      "name": "Suomi",
+      "rtl": false,
+      "deepl_target": "fi"
+    },
+    "fy": {
+      "name": "Frysk",
+      "rtl": false,
+      "deepl_target": null
+    },
+    "fr": {
+      "name": "Français",
+      "rtl": false,
+      "deepl_target": "fr"
+    },
+    "ga": {
+      "name": "Gaeilge",
+      "rtl": false,
+      "deepl_target": "ga"
+    },
+    "gl": {
+      "name": "Galego",
+      "rtl": false,
+      "deepl_target": "gl"
+    },
+    "gsw": {
+      "name": "Schwiizerdütsch",
+      "rtl": false,
+      "deepl_target": null
+    },
+    "he": {
+      "name": "עברית",
+      "rtl": true,
+      "deepl_target": "he"
+    },
+    "hi": {
+      "name": "हिन्दी",
+      "rtl": false,
+      "deepl_target": "hi"
+    },
+    "hr": {
+      "name": "Hrvatski",
+      "rtl": false,
+      "deepl_target": "hr"
+    },
+    "hu": {
+      "name": "Magyar",
+      "rtl": false,
+      "deepl_target": "hu"
+    },
+    "hy": {
+      "name": "Հայերեն",
+      "rtl": false,
+      "deepl_target": "hy"
+    },
+    "id": {
+      "name": "Indonesia",
+      "rtl": false,
+      "deepl_target": "id"
+    },
+    "it": {
+      "name": "Italiano",
+      "rtl": false,
+      "deepl_target": "it"
+    },
+    "is": {
+      "name": "Íslenska",
+      "rtl": false,
+      "deepl_target": "is"
+    },
+    "ja": {
+      "name": "日本語",
+      "rtl": false,
+      "deepl_target": "ja"
+    },
+    "ka": {
+      "name": "Kartuli",
+      "rtl": false,
+      "deepl_target": "ka"
+    },
+    "ko": {
+      "name": "한국어",
+      "rtl": false,
+      "deepl_target": "ko"
+    },
+    "lb": {
+      "name": "Lëtzebuergesch",
+      "rtl": false,
+      "deepl_target": "lb"
+    },
+    "lt": {
+      "name": "Lietuvių",
+      "rtl": false,
+      "deepl_target": "lt"
+    },
+    "lv": {
+      "name": "Latviešu",
+      "rtl": false,
+      "deepl_target": "lv"
+    },
+    "mk": {
+      "name": "Македонски",
+      "rtl": false,
+      "deepl_target": "mk"
+    },
+    "ml": {
+      "name": "മലയാളം",
+      "rtl": false,
+      "deepl_target": "ml"
+    },
+    "nl": {
+      "name": "Nederlands",
+      "rtl": false,
+      "deepl_target": "nl"
+    },
+    "nb": {
+      "name": "Norsk Bokmål",
+      "rtl": false,
+      "deepl_target": "nb"
+    },
+    "nn": {
+      "name": "Norsk Nynorsk",
+      "rtl": false,
+      "deepl_target": null
+    },
+    "pl": {
+      "name": "Polski",
+      "rtl": false,
+      "deepl_target": "pl"
+    },
+    "pt": {
+      "name": "Português",
+      "rtl": false,
+      "deepl_target": "pt-PT"
+    },
+    "pt-BR": {
+      "name": "Português (BR)",
+      "rtl": false,
+      "deepl_target": "pt-BR"
+    },
+    "ro": {
+      "name": "Română",
+      "rtl": false,
+      "deepl_target": "ro"
+    },
+    "ru": {
+      "name": "Русский",
+      "rtl": false,
+      "deepl_target": "ru"
+    },
+    "sk": {
+      "name": "Slovenčina",
+      "rtl": false,
+      "deepl_target": "sk"
+    },
+    "sl": {
+      "name": "Slovenščina",
+      "rtl": false,
+      "deepl_target": "sl"
+    },
+    "sr": {
+      "name": "Српски",
+      "rtl": false,
+      "deepl_target": "sr"
+    },
+    "sr-Latn": {
+      "name": "Srpski",
+      "rtl": false,
+      "deepl_target": null
+    },
+    "sv": {
+      "name": "Svenska",
+      "rtl": false,
+      "deepl_target": "sv"
+    },
+    "sq": {
+      "name": "Shqip",
+      "rtl": false,
+      "deepl_target": "sq"
+    },
+    "ta": {
+      "name": "தமிழ்",
+      "rtl": false,
+      "deepl_target": "ta"
+    },
+    "te": {
+      "name": "తెలుగు",
+      "rtl": false,
+      "deepl_target": "te"
+    },
+    "th": {
+      "name": "ภาษาไทย",
+      "rtl": false,
+      "deepl_target": "th"
+    },
+    "tr": {
+      "name": "Türkçe",
+      "rtl": false,
+      "deepl_target": "tr"
+    },
+    "uk": {
+      "name": "Українська",
+      "rtl": false,
+      "deepl_target": "uk"
+    },
+    "ur": {
+      "name": "اُردُو",
+      "rtl": true,
+      "deepl_target": "ur"
+    },
+    "vi": {
+      "name": "Tiếng Việt",
+      "rtl": false,
+      "deepl_target": "vi"
+    },
+    "zh-Hans": {
+      "name": "简体中文",
+      "rtl": false,
+      "deepl_target": "zh-Hans"
+    },
+    "zh-Hant": {
+      "name": "繁體中文",
+      "rtl": false,
+      "deepl_target": "zh-Hant"
+    }
+  }
+}

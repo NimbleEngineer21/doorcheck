@@ -31,6 +31,8 @@ jobs:
             run: uv run mypy
           - name: complexity
             run: uv run complexipy src tools --max-complexity-allowed 14
+          - name: localization
+            run: uv run python -m tools.localization --check
           - name: imports
             run: uv run lint-imports
           - name: tests

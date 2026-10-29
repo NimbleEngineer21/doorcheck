@@ -1,0 +1,19 @@
+{
+  "revision": "1",
+  "description": "Doorcheck reads Home Assistant integration source without executing it. Translate concise factual UI messages, never safety verdicts. Keep evidence limitations and uncertainty. Product names, placeholders and command syntax are protected.",
+  "protected_terms": [
+    "Doorcheck",
+    "Home Assistant",
+    "PyPI",
+    "SARIF",
+    "JSON",
+    "GitHub",
+    "Semgrep",
+    "GuardDog",
+    "zizmor",
+    "OSV",
+    "ES5",
+    "SHA-256",
+    "UTF-8"
+  ]
+}
