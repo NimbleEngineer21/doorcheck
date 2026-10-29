@@ -1,0 +1,89 @@
+name: Translation refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Pull request containing English/context changes (same repository or fork)
+        required: true
+        type: number
+      locales:
+        description: Comma-separated Home Assistant locale codes
+        required: true
+        default: de
+        type: string
+      max_characters:
+        description: Explicit upper character ceiling for this run
+        required: true
+        default: 20000
+        type: number
+      free_api:
+        description: Use the DeepL API Free endpoint
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: translations-deepl
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh translations
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read # trusted code and selected source JSON only
+      pull-requests: read # resolve a frozen PR head; never run it
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4"
+          enable-cache: false
+      - run: uv sync --locked
+      - name: Read English and context as data from the frozen PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]
+          HEAD_DATA=$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" \
+            --json headRefOid,headRepository,headRepositoryOwner \
+            --jq '[.headRefOid, .headRepositoryOwner.login, .headRepository.name] | @tsv')
+          IFS=$'\t' read -r HEAD_SHA HEAD_OWNER HEAD_NAME <<< "$HEAD_DATA"
+          [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$HEAD_OWNER" =~ ^[A-Za-z0-9-]+$ ]]
+          [[ "$HEAD_NAME" =~ ^[A-Za-z0-9_.-]+$ ]]
+          for NAME in en.json translation-context.json; do
+            gh api "repos/$HEAD_OWNER/$HEAD_NAME/contents/src/doorcheck/messages/$NAME" \
+              --method GET -f ref="$HEAD_SHA" --jq .content | base64 --decode \
+              > "src/doorcheck/messages/$NAME"
+          done
+          printf '%s\n' "$HEAD_SHA" > translation-source-commit.txt
+      - name: Refresh changed messages with an explicit budget
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          TARGET_LOCALES: ${{ inputs.locales }}
+          MAX_CHARACTERS: ${{ inputs.max_characters }}
+          FREE_API: ${{ inputs.free_api }}
+        run: |
+          EXTRA=()
+          if [[ "$FREE_API" == true ]]; then EXTRA+=(--free); fi
+          uv run python -m tools.deepl --locales "$TARGET_LOCALES" \
+            --max-characters "$MAX_CHARACTERS" --available-only --write \
+            --output "$RUNNER_TEMP/translations" "${EXTRA[@]}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: translation-refresh
+          path: |
+            ${{ runner.temp }}/translations
+            translation-source-commit.txt
+          if-no-files-found: error
+          retention-days: 14

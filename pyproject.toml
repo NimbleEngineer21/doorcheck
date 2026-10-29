@@ -162,6 +162,9 @@ version_provider = "pep621"
 source_paths = ["src/doorcheck/", "tools/"]
 pytest_add_cli_args_test_selection = ["tests/"]
 # Data the tests read, copied into mutmut's working copy.
-also_copy = ["benchmark/", "tools/templates/", "tools/visual-check.js", "docs/"]
+also_copy = [
+    "benchmark/", "tools/templates/", "tools/visual-check.js", "docs/",
+    ".github/workflows/",
+]
 # Coverage of mutated copies is meaningless and would fail the threshold.
 pytest_add_cli_args = ["--no-cov"]

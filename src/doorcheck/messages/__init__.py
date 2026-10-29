@@ -36,11 +36,32 @@ def placeholders(template: str) -> frozenset[str]:
     return frozenset(names)
 
 
+def _unique_english(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise MessageError("duplicate English catalog key")
+        result[key] = value
+    return result
+
+
 def _load() -> Mapping[str, str]:
-    data = json.loads(files().joinpath("en.json").read_bytes())
+    raw = files().joinpath("en.json").read_bytes()
+    if len(raw) > 1_000_000:
+        raise MessageError("English catalog exceeds byte limit")
+    try:
+        data = json.loads(raw, object_pairs_hook=_unique_english)
+    except (ValueError, UnicodeError, RecursionError) as error:
+        raise MessageError("invalid English catalog JSON") from error
+    if not isinstance(data, dict):
+        raise MessageError("English catalog must be an object")
     for key, template in data.items():
         if not MESSAGE_KEY.fullmatch(key) or not isinstance(template, str) or not template:
             raise MessageError(f"invalid catalog entry: {key!r}")
+        try:
+            template.encode()
+        except UnicodeError as error:
+            raise MessageError("English catalog contains invalid Unicode") from error
         placeholders(template)
     return MappingProxyType(data)
 
@@ -48,7 +69,9 @@ def _load() -> Mapping[str, str]:
 ENGLISH = _load()
 
 
-def render(key: str, params: Mapping[str, str] = MappingProxyType({})) -> str:
+def render(
+    key: str, params: Mapping[str, str] = MappingProxyType({}), *, locale: str | None = None
+) -> str:
     """Render a known key, exposing hidden controls in each substituted value.
 
     Extra parameters are allowed: producers attach structured diagnostic context
@@ -57,6 +80,10 @@ def render(key: str, params: Mapping[str, str] = MappingProxyType({})) -> str:
     if key not in ENGLISH:
         raise MessageError(f"unknown message key: {key!r}")
     template = ENGLISH[key]
+    if locale is not None:
+        from doorcheck.messages.localization import template as localized_template
+
+        template = localized_template(key, locale)
     required = placeholders(template)
     missing = required - params.keys()
     if missing:
@@ -70,11 +97,11 @@ def render(key: str, params: Mapping[str, str] = MappingProxyType({})) -> str:
     return template.format_map(values)
 
 
-def render_capability(capability: Capability) -> str:
+def render_capability(capability: Capability, *, locale: str | None = None) -> str:
     """Describe a capability without assigning severity or claiming execution."""
     subject = capability.subject
     if subject == COMPUTED:
-        subject = render("value.computed")
+        subject = render("value.computed", locale=locale)
     params = {"subject": subject}
     options = {
         Kind.WEBHOOK: "local_only",
@@ -89,9 +116,11 @@ def render_capability(capability: Capability) -> str:
             "false": "value.false",
             "omitted": "value.omitted",
         }
-        params[option] = render(keys.get(capability.attrs.get(option), "value.unresolved"))
+        params[option] = render(
+            keys.get(capability.attrs.get(option), "value.unresolved"), locale=locale
+        )
     if capability.kind is Kind.HA_STATIC_PATH:
         for name in ("url_path", "path"):
             value = capability.attrs.get(name, COMPUTED)
-            params[name] = render("value.unresolved") if value == COMPUTED else value
-    return render(f"capability.{capability.kind.value}", params)
+            params[name] = render("value.unresolved", locale=locale) if value == COMPUTED else value
+    return render(f"capability.{capability.kind.value}", params, locale=locale)

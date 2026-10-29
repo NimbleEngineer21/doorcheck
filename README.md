@@ -100,7 +100,8 @@ uv run mutmut run      # mutation tests; `uv run mutmut browse` to see survivors
 ```
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the rest, including what a pull request
-needs.
+needs. [Localization](docs/localization.md) describes locale coverage, offline
+freshness checks, and the bounded DeepL refresh workflow.
 
 ## Maintenance
 
