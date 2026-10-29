@@ -113,8 +113,8 @@ name = "Each layer builds only on the layers below it"
 type = "layers"
 layers = [
     "doorcheck.cli",
-    "doorcheck.cli_compare",
-    "doorcheck.cli_output | doorcheck.cli_scan | doorcheck.comparison",
+    "doorcheck.cli_compare | doorcheck.cli_hosts",
+    "doorcheck.cli_output | doorcheck.cli_scan | doorcheck.comparison | doorcheck.hosts | doorcheck.cli_report",
     "doorcheck.messages | doorcheck.sarif | doorcheck.fetch",
     "doorcheck.report",
     "doorcheck.rules",
@@ -131,6 +131,9 @@ type = "forbidden"
 source_modules = [
     "doorcheck.capabilities",
     "doorcheck.cli_compare",
+    "doorcheck.cli_hosts",
+    "doorcheck.cli_report",
+    "doorcheck.hosts",
     "doorcheck.comparison",
     "doorcheck.checks",
     "doorcheck.dependencies",

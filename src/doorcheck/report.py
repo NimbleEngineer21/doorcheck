@@ -87,7 +87,7 @@ def to_dict(report: Report) -> dict[str, Any]:
         "doorcheck_version": report.doorcheck_version,
         "target": {key: getattr(target, key) for key in sorted(_TARGET_FIELDS)},
         "checks": [_check_to_dict(c) for c in report.checks],
-        "capabilities": [_capability_to_dict(c) for c in report.capabilities],
+        "capabilities": [capability_to_dict(c) for c in report.capabilities],
         "findings": [_finding_to_dict(f) for f in report.findings],
     }
 
@@ -110,7 +110,7 @@ def _check_to_dict(check: Check) -> dict[str, Any]:
     }
 
 
-def _capability_to_dict(capability: Capability) -> dict[str, Any]:
+def capability_to_dict(capability: Capability) -> dict[str, Any]:
     return {
         "kind": capability.kind.value,
         "location": _location_to_dict(capability.location),

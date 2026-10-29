@@ -7,46 +7,11 @@ from typing import Any
 
 from doorcheck.checks import Status
 from doorcheck.cli_output import report_body, single_line
+from doorcheck.cli_report import read_report
 from doorcheck.cli_scan import exit_code
 from doorcheck.comparison import Comparison, compare
-from doorcheck.errors import DoorcheckError
-from doorcheck.messages import MessageError, render
-from doorcheck.report import Report, from_dict, to_dict
-from doorcheck.tree import read_regular
-
-MAX_REPORT_BYTES = 20 * 1024 * 1024
-
-
-class ReportInputError(DoorcheckError):
-    """A report cannot be read and explained with this version of Doorcheck."""
-
-    key = "cli.report_invalid"
-
-
-def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError
-        result[key] = value
-    return result
-
-
-def read_report(path: Path) -> Report:
-    try:
-        data = read_regular(path, MAX_REPORT_BYTES + 1)
-        if len(data) > MAX_REPORT_BYTES:
-            raise ValueError
-        report = from_dict(json.loads(data.decode(), object_pairs_hook=_unique_object))
-        # Validate unchanged messages too, so text and JSON accept the same inputs.
-        for finding in report.findings:
-            render(finding.message_key, finding.params)
-        for check in report.checks:
-            for problem in check.problems:
-                render(problem.key, problem.params)
-        return report
-    except (OSError, ValueError, RecursionError, MessageError) as error:
-        raise ReportInputError(str(path)) from error
+from doorcheck.messages import render
+from doorcheck.report import Report, to_dict
 
 
 def metadata_matches(change: Comparison) -> bool:

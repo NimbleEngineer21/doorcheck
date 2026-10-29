@@ -20,6 +20,7 @@ Doorcheck is not affiliated with Home Assistant or the Open Home Foundation.
 - Neutral Python capability observations, manifest requirements and scan coverage gaps.
 - [Webhook registration observations](docs/webhooks.md) with explicit local-only argument facts.
 - Versioned JSON reports and SARIF export.
+- An offline [host-evidence summary command and API](docs/host-summary.md), retaining source evidence and coverage.
 - An offline [report comparison command and API](docs/comparison.md) for added/removed observations.
 - A [scan command for local folders and GitHub integrations at explicit commits or tags](docs/cli.md) with explicit coverage and exit codes.
 - GitHub source/release fetching, archive validation and artifact fingerprints.

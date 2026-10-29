@@ -5,6 +5,7 @@ import sys
 from collections.abc import Sequence
 from importlib.metadata import EntryPoint
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -315,7 +316,8 @@ def test_prepare_resolves_the_dependencies_once(tmp_path: Path) -> None:
         asked.append(requirement.name)
         return "1.5"
 
-    scan = prepare(tmp_path, resolve)
+    with patch("doorcheck.https.get", side_effect=AssertionError("unexpected download")):
+        scan = prepare(tmp_path, resolve)
     assert scan == ScanInput(tmp_path, Dependencies((Pin(PypiRequirement("a", "==1.5"), 1),)))
     assert asked == ["a"]
     assert ScanInput(tmp_path).dependencies == Dependencies()

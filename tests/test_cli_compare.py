@@ -14,7 +14,7 @@ from referencing import Registry, Resource
 from doorcheck import cli
 from doorcheck.capabilities.model import Capability, Kind
 from doorcheck.checks import Check, Problem, Status
-from doorcheck.cli_compare import MAX_REPORT_BYTES, ReportInputError, read_report
+from doorcheck.cli_report import MAX_REPORT_BYTES, ReportInputError, read_report
 from doorcheck.findings import Location, Severity
 from doorcheck.messages import render
 from doorcheck.report import Report, Target, to_dict
@@ -254,10 +254,10 @@ def test_report_byte_boundary_and_bounded_read(tmp_path: Path, monkeypatch) -> N
     assert MAX_REPORT_BYTES == 20 * 1024 * 1024
     path = save(tmp_path, "report.json", EMPTY)
     size = len(path.read_bytes())
-    monkeypatch.setattr("doorcheck.cli_compare.MAX_REPORT_BYTES", size)
+    monkeypatch.setattr("doorcheck.cli_report.MAX_REPORT_BYTES", size)
     from doorcheck.tree import read_regular
 
-    with patch("doorcheck.cli_compare.read_regular", wraps=read_regular) as read:
+    with patch("doorcheck.cli_report.read_regular", wraps=read_regular) as read:
         assert read_report(path) == EMPTY
     read.assert_called_once_with(path, size + 1)
     path.write_bytes(path.read_bytes() + b" ")
