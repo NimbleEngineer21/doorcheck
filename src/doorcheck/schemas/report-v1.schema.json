@@ -265,6 +265,7 @@
             "ha_private_file",
             "ha_service_call",
             "web_view",
+            "ha_frontend_script",
             "ha_panel",
             "webhook",
             "replaces_code",

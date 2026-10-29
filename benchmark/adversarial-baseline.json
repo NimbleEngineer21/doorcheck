@@ -224,7 +224,7 @@
     "variant": "adversarial",
     "expected": 1,
     "matched": 1,
-    "observations": 1,
+    "observations": 2,
     "missing": [],
     "forbidden": [],
     "problems": []
@@ -234,7 +234,7 @@
     "variant": "benign",
     "expected": 0,
     "matched": 0,
-    "observations": 0,
+    "observations": 1,
     "missing": [],
     "forbidden": [],
     "problems": []

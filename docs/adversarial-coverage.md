@@ -15,7 +15,7 @@ This is a capability-reader benchmark, not a malware detection score. No Home As
 | url-dependency | 1/1 | 1/1 | 1/1 | dependency-source-policy |
 | dependency-update | 1/1 | 1/1 | 1/1 | dependency-version-diff |
 | browser-token | not asserted | not asserted | 0/0 | javascript-data-flow |
-| dashboard-script | 1/1 | not asserted | 1/0 | frontend-hooks, javascript-data-flow |
+| dashboard-script | 1/1 | not asserted | 2/1 | frontend-hooks, javascript-data-flow |
 | addon-network | not asserted | not asserted | 0/0 | addon-privileges, endpoint-authentication |
 | webhook-scope | not asserted | not asserted | 0/0 | blueprint-webhooks |
 | copycat-name | not asserted | not asserted | 0/0 | repository-identity |
