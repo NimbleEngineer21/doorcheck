@@ -90,7 +90,7 @@ receipts, without reading a credential or calling DeepL:
 uv run python -m tools.deepl --locales de,fr
 ```
 
-For the initial 126-message catalog, that two-locale estimate was 26,198
+For the current 135-message catalog, that two-locale estimate is 28,610
 source/XML characters. This is a conservative upper estimate, not an exact bill;
 protected XML markup increases the local count. Estimates change with source
 text and already current translations.
