@@ -76,13 +76,12 @@ def render_capability(capability: Capability) -> str:
     if subject == COMPUTED:
         subject = render("value.computed")
     params = {"subject": subject}
-    if capability.kind is Kind.WEBHOOK:
+    if capability.kind in (Kind.WEBHOOK, Kind.HA_PANEL):
+        option = "local_only" if capability.kind is Kind.WEBHOOK else "require_admin"
         keys: dict[str | None, str] = {
             "true": "value.true",
             "false": "value.false",
             "omitted": "value.omitted",
         }
-        params["local_only"] = render(
-            keys.get(capability.attrs.get("local_only"), "value.unresolved")
-        )
+        params[option] = render(keys.get(capability.attrs.get(option), "value.unresolved"))
     return render(f"capability.{capability.kind.value}", params)

@@ -117,6 +117,8 @@ def test_capability_uses_its_kind_and_subject(kind: Kind) -> None:
     params = {"subject": "subject\u202e"}
     if kind is Kind.WEBHOOK:
         params["local_only"] = render("value.unresolved")
+    if kind is Kind.HA_PANEL:
+        params["require_admin"] = render("value.unresolved")
     assert render_capability(capability) == render(f"capability.{kind.value}", params)
 
 
