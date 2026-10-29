@@ -303,7 +303,7 @@ def test_hostile_report_fields_cannot_add_terminal_rows(tmp_path: Path, capsys) 
     text = capsys.readouterr().out
     assert "\x1b" not in text and "\t" not in text and "\u202e" not in text
     assert "⟨U+000A⟩⟨U+0009⟩⟨U+202E⟩" in text
-    assert text.count("\n") == 22
+    assert text.count("\n") == 24
 
 
 @pytest.mark.parametrize(

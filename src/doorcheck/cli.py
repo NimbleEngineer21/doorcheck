@@ -9,9 +9,9 @@ from typing import Never
 
 from doorcheck.cli_compare import ReportInputError, command
 from doorcheck.cli_output import human, single_line
-from doorcheck.cli_scan import exit_code, scan_folder, scan_repository
+from doorcheck.cli_scan import exit_code, scan_folder, scan_release, scan_repository
 from doorcheck.messages import render
-from doorcheck.report import to_dict
+from doorcheck.report import Report, to_dict
 from doorcheck.sarif import to_sarif
 
 
@@ -34,12 +34,15 @@ def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     targets = parser.add_mutually_exclusive_group(required=True)
     targets.add_argument("folder", nargs="?")
     targets.add_argument("--repo")
-    parser.add_argument("--commit")
+    revisions = parser.add_mutually_exclusive_group()
+    revisions.add_argument("--commit")
+    revisions.add_argument("--tag")
     formats = parser.add_mutually_exclusive_group()
     formats.add_argument("--json", action="store_true")
     formats.add_argument("--sarif", action="store_true")
     options = parser.parse_args(argv[1:])
-    if (options.repo is None) != (options.commit is None) or options.repo == "":
+    remote = options.commit is not None or options.tag is not None
+    if (options.repo is not None) != remote or options.repo == "":
         raise UsageError
     return options
 
@@ -52,12 +55,14 @@ def _comparison_arguments(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _repository(options: argparse.Namespace) -> Report:
+    if options.tag is not None:
+        return scan_release(options.repo, options.tag)
+    return scan_repository(options.repo, options.commit)
+
+
 def _scan(options: argparse.Namespace) -> tuple[str, int]:
-    report = (
-        scan_repository(options.repo, options.commit)
-        if options.repo is not None
-        else scan_folder(Path(options.folder))
-    )
+    report = _repository(options) if options.repo is not None else scan_folder(Path(options.folder))
     if options.json:
         output = json.dumps(to_dict(report)) + "\n"
     elif options.sarif:
