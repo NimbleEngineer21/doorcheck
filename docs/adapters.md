@@ -29,6 +29,10 @@ A tool at any other version is refused, because its findings could differ from
 what was tested. Renovate proposes version bumps for the PyPI tools; OSV-Scanner
 is bumped by hand together with its SHA-256 in `.github/workflows/ci.yml`.
 
+Semgrep is available through `doorcheck scan --semgrep-rule PATH`, with repeatable
+trusted local rule files and an already-installed pinned executable. See the
+[CLI guide](cli.md#opt-in-to-installed-semgrep). Other adapters remain library-only.
+
 ## Adding a tool
 
 1. Write a class with `name`, `version`, `executable`, `audience`,

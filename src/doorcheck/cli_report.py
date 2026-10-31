@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from doorcheck.checks import Status
 from doorcheck.errors import DoorcheckError
+from doorcheck.findings import Severity
 from doorcheck.messages import MessageError, render
 from doorcheck.report import Report, from_dict
 from doorcheck.tree import read_regular
@@ -42,3 +44,12 @@ def read_report(path: Path) -> Report:
         return report
     except (OSError, ValueError, RecursionError, MessageError) as error:
         raise ReportInputError(str(path)) from error
+
+
+def exit_code(report: Report) -> int:
+    """Coverage gaps take precedence over findings, including when both exist."""
+    if any(check.status in (Status.PARTIAL, Status.FAILED) for check in report.checks):
+        return 2
+    if any(finding.severity in (Severity.REVIEW, Severity.SERIOUS) for finding in report.findings):
+        return 1
+    return 0

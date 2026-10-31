@@ -47,7 +47,8 @@ uv run doorcheck scan --repo OWNER/REPO --tag TAG
 ```
 
 The command runs the source capability reader and one Python file-read rule.
-It does not run external scanners or dependency advisory checks. See the
+Add `--semgrep-rule /path/to/trusted-rules.yaml` to also run an already-installed,
+pinned Semgrep with explicit local rules. Dependency advisory checks are not run. See the
 [CLI guide](docs/cli.md) for coverage, SARIF and exit codes.
 
 ## Try the Python core

@@ -1,7 +1,7 @@
 # Scan an integration
 
 The first command-line surface runs Doorcheck's source capability reader and
-Python unauthenticated route-to-file-read rule. Local folder scans make no
+Python unauthenticated route-to-file-read rule. Default local folder scans make no
 network requests. Repository scans download only an explicit commit or tag from GitHub. Neither
 mode installs dependencies or imports or executes scanned code.
 
@@ -20,7 +20,7 @@ uv run python -m doorcheck --help
 `--sarif` are mutually exclusive. Use `scan --json -- -folder` for a directory
 whose name starts with a dash. Relative paths resolve from the current working
 directory; the shell handles `~`. The final local root component cannot be a
-symbolic link. External scanner selection/installation and advisory lookups remain future command-line work.
+symbolic link. Semgrep is opt-in through local rule files (below); tool installation and advisory lookups remain separate work.
 
 ## Scan a GitHub integration at a commit or tag
 
@@ -71,6 +71,52 @@ only a failed `fetch` check, no source results, and exit code 2. Its catalog
 message does not include raw download errors or temporary paths. Failed reports
 do not claim a verified commit or artifact digest.
 
+## Opt in to installed Semgrep
+
+```console
+doorcheck scan /path/to/integration --semgrep-rule /path/to/trusted-rules.yaml
+doorcheck scan --repo OWNER/REPO --commit FULL_SHA --semgrep-rule rules.yaml --json
+doorcheck scan /path/to/integration --semgrep-rule first.yaml --semgrep-rule second.yaml --sarif
+```
+
+Each `--semgrep-rule` selects an existing local regular file, interpreted relative
+to the invocation directory. Missing files, directories, FIFOs and final-component
+symlinks are invalid arguments, rejected before scanning or fetching. Registry
+names and URLs are not accepted. Select rules you trust; Doorcheck does not select
+rules from the scanned project. Rule files are not snapshotted: keep them unchanged
+throughout a run. Parent-directory links are allowed.
+
+The flag requests the existing [Semgrep adapter](adapters.md), in addition to both
+built-in checks. Semgrep must already be on `PATH` at the adapter's exact pinned
+version (currently 1.182.0). This command does not install it or bundle a production
+rule pack. `tests/fixtures/semgrep/` contains a test-only rule, not a recommended
+production detector. Results depend on your selected rules; their coverage and
+accuracy are not established by the built-in Python rule's benchmark.
+
+A separate `semgrep` check records the expected tool version and completion,
+partial coverage, nothing-to-scan or failure. Findings retain the rule ID, severity,
+evidence and tool attribution. Text and SARIF render the tool's message as data;
+rule metadata cannot select shared localization templates. JSON retains that
+message in finding parameters. A failed or partial tool check returns 2 even when
+built-in findings exist. Missing/wrong-version tools, invalid output, command
+failure, output overflow and timeout never become a clean result. Invalid targets
+and failed downloads do not launch Semgrep. Empty folders still require the pinned
+tool version before reporting nothing to scan.
+
+Remote scans run Semgrep on the same selected installed files before temporary
+snapshot cleanup, including tagged release assets. Provenance and both built-in
+checks are retained. No dependency resolution is requested for this source scan.
+
+The runner uses a fresh scratch HOME, restricts inherited environment variables,
+caps combined output at 20 MiB per process, and terminates process groups after
+completion/failure. Version detection and the scan each have a 300-second timeout;
+there is no single command-wide deadline. These controls are not a filesystem or
+network sandbox. The executable and trusted rule configuration may access files
+or the network; the default built-in-only local scan's offline guarantee does not
+extend to this opt-in external process. Metrics and version checks are disabled
+for the Semgrep scan. Existing ignore/suppression resistance and parser limitations
+remain documented in the adapter guide.
+
 ## Output and exit codes
 
 Plain text lists each check's coverage, findings with severity words, and
@@ -109,8 +155,9 @@ machine-readable stdout.
 
 ## Coverage boundaries
 
-Only two built-in source checks run. There are no dependency advisories,
-Semgrep, zizmor or GuardDog checks in this command yet. The [Python rule's
+By default only two built-in source checks run. Semgrep can additionally be
+requested with `--semgrep-rule PATH`. There are no dependency advisories, zizmor
+or GuardDog checks in this command. The [Python rule's
 blind spots](rules.md#blind-spots) and [capability limits](http-observations.md)
 still apply, including the documented helper-flow miss in HACS.
 
@@ -259,3 +306,16 @@ HTTP request source and frontend script registrations without rescanning. It
 retains the original report, unresolved destinations, check coverage and findings.
 See the [host-summary guide](host-summary.md) for exact grouping, JSON schema,
 coverage-first exit codes and measured source evidence. Host names do not prove traffic.
+
+## External-tool smoke evidence
+
+Pinned Semgrep 1.182.0 was run through this orchestration with the existing
+**test-only** path-join fixture rule. Both inert unsafe fixture matches were
+retained, including the suppressed line; the clean fixture produced no findings.
+All requested checks completed. On the pinned Font Awesome pair, it reported
+`custom_component_server.py:19` in 1.2.0 and also `:24` in the fixed 1.3.0. The
+latter is a false alarm: this test rule does not model `sanitize_path`. It is
+not a production rule pack or an improvement to the built-in benchmark. The
+built-in detector still catches 2/3 published file-read cases with zero alarms
+on the standing reference/fixed cases. User-supplied rules need their own
+vulnerable, fixed and reference evaluation.

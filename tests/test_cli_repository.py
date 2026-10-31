@@ -148,7 +148,7 @@ def test_snapshot_digest_cleanup_and_no_execution(tmp_path: Path) -> None:
 
     snapshots = []
 
-    def inspect(root: Path):
+    def inspect(root: Path, *, semgrep_rules: tuple[Path, ...]):
         snapshots.append(root)
         assert root.is_dir()
         report = scan_folder(root)
@@ -196,7 +196,7 @@ def test_snapshot_removed_when_scan_stops(failure: type[BaseException]) -> None:
     handler = FakeHTTPS({URL: archive()})
     roots = []
 
-    def stop(root: Path):
+    def stop(root: Path, *, semgrep_rules: tuple[Path, ...]):
         roots.append(root)
         raise failure
 
