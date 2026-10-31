@@ -51,8 +51,8 @@ requires = ["uv_build==0.13.4"]
 build-backend = "uv_build"
 
 [tool.uv]
-# Nothing published in the last three days is installed, the same rule Renovate
-# follows, so a compromised release has time to be noticed and pulled.
+# Wait three days before resolving new releases, matching routine bot updates.
+# This delay is a review aid, not a guarantee that a release is trustworthy.
 exclude-newer = "3 days"
 
 [tool.uv.build-backend]

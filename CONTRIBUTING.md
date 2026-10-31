@@ -47,6 +47,9 @@ Keep those dependencies out of the engine environment.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
   and are signed.
 
+Dependency and workflow-tool updates follow the ownership and review rules in
+[Dependency updates](docs/dependency-updates.md).
+
 ## Using AI tools
 
 Doorcheck follows the spirit of
