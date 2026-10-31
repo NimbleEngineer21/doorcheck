@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import stat
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -44,11 +45,23 @@ def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     formats = parser.add_mutually_exclusive_group()
     formats.add_argument("--json", action="store_true")
     formats.add_argument("--sarif", action="store_true")
+    parser.add_argument("--semgrep-rule", action="append", type=_rule_file, default=[])
     options = parser.parse_args(argv[1:])
     remote = options.commit is not None or options.tag is not None
     if (options.repo is not None) != remote or options.repo == "":
         raise UsageError
     return options
+
+
+def _rule_file(value: str) -> Path:
+    path = Path(value).absolute()
+    try:
+        regular = stat.S_ISREG(path.lstat().st_mode)
+    except OSError as error:
+        raise UsageError from error
+    if not regular:
+        raise UsageError
+    return path
 
 
 def _comparison_arguments(argv: Sequence[str]) -> argparse.Namespace:
@@ -68,12 +81,16 @@ def _host_arguments(argv: Sequence[str]) -> argparse.Namespace:
 
 def _repository(options: argparse.Namespace) -> Report:
     if options.tag is not None:
-        return scan_release(options.repo, options.tag)
-    return scan_repository(options.repo, options.commit)
+        return scan_release(options.repo, options.tag, semgrep_rules=tuple(options.semgrep_rule))
+    return scan_repository(options.repo, options.commit, semgrep_rules=tuple(options.semgrep_rule))
 
 
 def _scan(options: argparse.Namespace) -> tuple[str, int]:
-    report = _repository(options) if options.repo is not None else scan_folder(Path(options.folder))
+    report = (
+        _repository(options)
+        if options.repo is not None
+        else scan_folder(Path(options.folder), semgrep_rules=tuple(options.semgrep_rule))
+    )
     if options.json:
         output = json.dumps(to_dict(report)) + "\n"
     elif options.sarif:

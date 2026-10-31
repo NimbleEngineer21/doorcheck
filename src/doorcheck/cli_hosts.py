@@ -6,8 +6,7 @@ from typing import Any
 
 from doorcheck.checks import Status
 from doorcheck.cli_output import report_body, single_line
-from doorcheck.cli_report import read_report
-from doorcheck.cli_scan import exit_code
+from doorcheck.cli_report import exit_code, read_report
 from doorcheck.hosts import Evidence, HostSummary, summarize
 from doorcheck.messages import render, render_capability
 from doorcheck.report import capability_to_dict, to_dict

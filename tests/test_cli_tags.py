@@ -116,7 +116,7 @@ def test_named_release_asset_is_scanned_instead_of_tagged_source(tmp_path: Path)
     roots = []
     from doorcheck.cli_scan import scan_folder
 
-    def inspect(root: Path):
+    def inspect(root: Path, *, semgrep_rules: tuple[Path, ...]):
         roots.append(root)
         assert sorted(p.name for p in root.iterdir()) == ["manifest.json", "shipped.py"]
         roots.append(tree_digest(root))
@@ -191,7 +191,7 @@ def test_temporary_snapshot_is_removed_when_scan_stops(failure: type[BaseExcepti
     handler = FakeHTTPS({URL: archive()})
     roots = []
 
-    def stop(root: Path):
+    def stop(root: Path, *, semgrep_rules: tuple[Path, ...]):
         roots.append(root)
         raise failure
 

@@ -7,8 +7,7 @@ from typing import Any
 
 from doorcheck.checks import Status
 from doorcheck.cli_output import report_body, single_line
-from doorcheck.cli_report import read_report
-from doorcheck.cli_scan import exit_code
+from doorcheck.cli_report import exit_code, read_report
 from doorcheck.comparison import Comparison, compare
 from doorcheck.messages import render
 from doorcheck.report import Report, to_dict
