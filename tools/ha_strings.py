@@ -21,15 +21,31 @@ def catalog(locale: str | None = None) -> dict[str, object]:
             },
         },
         "services": {
+            "scan_integration": {
+                "name": render("ha.service.scan_name", locale=locale),
+                "description": render("ha.service.scan_description", locale=locale),
+                "fields": {
+                    "directory": {
+                        "name": render("ha.service.scan_directory_name", locale=locale),
+                        "description": render(
+                            "ha.service.scan_directory_description", locale=locale
+                        ),
+                    }
+                },
+            },
             "get_inventory": {
                 "name": render("ha.service.inventory_name", locale=locale),
                 "description": render("ha.service.inventory_description", locale=locale),
-            }
+            },
         },
         "exceptions": {
+            "scan_busy": {"message": render("ha.service.scan_busy", locale=locale)},
+            "scan_invalid_directory": {
+                "message": render("ha.service.scan_invalid_directory", locale=locale)
+            },
             "inventory_not_configured": {
                 "message": render("ha.service.not_configured", locale=locale)
-            }
+            },
         },
     }
 

@@ -76,7 +76,7 @@ async def test_diagnostics_never_export_configuration(hass: HomeAssistant) -> No
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     data = await async_get_config_entry_diagnostics(hass, entry)
-    assert data == {"engine_version": version("doorcheck"), "scanning_available": False}
+    assert data == {"engine_version": version("doorcheck"), "scanning_available": True}
     assert "private" not in json.dumps(data)
 
 

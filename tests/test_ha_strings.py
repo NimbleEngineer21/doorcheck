@@ -23,15 +23,27 @@ def test_native_structure_uses_shared_messages() -> None:
             },
         },
         "services": {
+            "scan_integration": {
+                "name": render("ha.service.scan_name"),
+                "description": render("ha.service.scan_description"),
+                "fields": {
+                    "directory": {
+                        "name": render("ha.service.scan_directory_name"),
+                        "description": render("ha.service.scan_directory_description"),
+                    }
+                },
+            },
             "get_inventory": {
                 "name": render("ha.service.inventory_name"),
                 "description": render("ha.service.inventory_description"),
-            }
+            },
         },
         "exceptions": {
+            "scan_busy": {"message": render("ha.service.scan_busy")},
+            "scan_invalid_directory": {"message": render("ha.service.scan_invalid_directory")},
             "inventory_not_configured": {
                 "message": render("ha.service.not_configured"),
-            }
+            },
         },
     }
 
@@ -85,6 +97,18 @@ def test_export_uses_the_selected_locale(tmp_path: Path) -> None:
             "already_in_progress": "en:ha.config.already_in_progress",
         }
         for locale, translated in (("de", data), ("en", english)):
+            assert translated["services"]["scan_integration"] == {
+                "name": f"{locale}:ha.service.scan_name",
+                "description": f"{locale}:ha.service.scan_description",
+                "fields": {
+                    "directory": {
+                        "name": f"{locale}:ha.service.scan_directory_name",
+                        "description": f"{locale}:ha.service.scan_directory_description",
+                    }
+                },
+            }
+            for key in ("scan_busy", "scan_invalid_directory"):
+                assert translated["exceptions"][key]["message"] == f"{locale}:ha.service.{key}"
             assert translated["services"]["get_inventory"] == {
                 "name": f"{locale}:ha.service.inventory_name",
                 "description": f"{locale}:ha.service.inventory_description",

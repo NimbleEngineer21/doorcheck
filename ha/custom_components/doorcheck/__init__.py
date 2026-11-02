@@ -1,4 +1,4 @@
-"""Development scaffold; scanning and update alerts are not available yet."""
+"""Development preview with explicit scans; no background update alerts."""
 
 from dataclasses import dataclass
 from importlib.metadata import version
