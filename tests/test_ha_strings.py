@@ -21,7 +21,18 @@ def test_native_structure_uses_shared_messages() -> None:
                 "single_instance_allowed": render("ha.config.already_configured"),
                 "already_in_progress": render("ha.config.already_in_progress"),
             },
-        }
+        },
+        "services": {
+            "get_inventory": {
+                "name": render("ha.service.inventory_name"),
+                "description": render("ha.service.inventory_description"),
+            }
+        },
+        "exceptions": {
+            "inventory_not_configured": {
+                "message": render("ha.service.not_configured"),
+            }
+        },
     }
 
 
@@ -73,6 +84,15 @@ def test_export_uses_the_selected_locale(tmp_path: Path) -> None:
             "single_instance_allowed": "en:ha.config.already_configured",
             "already_in_progress": "en:ha.config.already_in_progress",
         }
+        for locale, translated in (("de", data), ("en", english)):
+            assert translated["services"]["get_inventory"] == {
+                "name": f"{locale}:ha.service.inventory_name",
+                "description": f"{locale}:ha.service.inventory_description",
+            }
+            assert (
+                translated["exceptions"]["inventory_not_configured"]["message"]
+                == f"{locale}:ha.service.not_configured"
+            )
         assert ha_strings.main(["--check"]) == 0
 
 

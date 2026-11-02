@@ -19,7 +19,18 @@ def catalog(locale: str | None = None) -> dict[str, object]:
                 "single_instance_allowed": render("ha.config.already_configured", locale=locale),
                 "already_in_progress": render("ha.config.already_in_progress", locale=locale),
             },
-        }
+        },
+        "services": {
+            "get_inventory": {
+                "name": render("ha.service.inventory_name", locale=locale),
+                "description": render("ha.service.inventory_description", locale=locale),
+            }
+        },
+        "exceptions": {
+            "inventory_not_configured": {
+                "message": render("ha.service.not_configured", locale=locale)
+            }
+        },
     }
 
 

@@ -81,7 +81,11 @@ async def test_diagnostics_never_export_configuration(hass: HomeAssistant) -> No
 
 
 def test_manifest_requires_the_actual_local_engine() -> None:
-    manifest = json.loads(Path("custom_components/doorcheck/manifest.json").read_text())
+    manifest = json.loads(
+        (
+            Path(__file__).resolve().parents[1] / "custom_components/doorcheck/manifest.json"
+        ).read_text()
+    )
     assert manifest["requirements"] == [f"doorcheck=={version('doorcheck')}"]
     assert manifest["domain"] == DOMAIN
     assert manifest["config_flow"] is True
