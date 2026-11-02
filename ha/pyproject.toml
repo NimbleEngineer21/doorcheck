@@ -1,0 +1,63 @@
+[project]
+name = "doorcheck-ha-tests"
+version = "0.0.0"
+requires-python = ">=3.13.2"
+dependencies = [
+    "doorcheck==0.1.0",
+    "mutmut==3.8.0",
+]
+
+[dependency-groups]
+minimum = [
+    "pytest-homeassistant-custom-component==0.13.294",
+    "mypy==1.18.2",
+    # HA 2025.11 aiodns needs the pycares 4.x result types.
+    "pycares==4.11.0",
+]
+previous = [
+    "pytest-homeassistant-custom-component==0.13.367",
+    "mypy==2.4.0",
+]
+current = [
+    "pytest-homeassistant-custom-component==0.13.375",
+    "mypy==2.4.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["current"]
+conflicts = [[{ group = "minimum" }, { group = "previous" }, { group = "current" }]]
+environments = ["python_version == '3.13' or python_full_version >= '3.14.2'"]
+exclude-newer = "3 days"
+
+[tool.uv.dependency-groups]
+minimum = { requires-python = ">=3.13.2,<3.14" }
+previous = { requires-python = ">=3.14.2" }
+current = { requires-python = ">=3.14.2" }
+
+[tool.uv.sources]
+doorcheck = { path = "..", editable = true }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers --cov=custom_components.doorcheck --cov-branch --cov-report=term-missing"
+
+[tool.coverage.report]
+fail_under = 100
+
+[tool.mypy]
+strict = true
+files = ["custom_components"]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mutmut]
+source_paths = ["custom_components/doorcheck/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+pytest_add_cli_args = ["--no-cov"]

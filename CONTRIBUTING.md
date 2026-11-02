@@ -29,6 +29,10 @@ Every check CI runs can be run locally:
 | Tests | `uv run pytest` (and `uv run --python 3.13 pytest --no-cov`) |
 | Mutation | `uv run mutmut run`, then `uv run mutmut browse` for survivors |
 
+The HA development scaffold has a
+[separate locked framework test environment](docs/home-assistant-development.md).
+Keep those dependencies out of the engine environment.
+
 ## What a pull request needs
 
 - One change, described with the [pull request template](.github/pull_request_template.md).

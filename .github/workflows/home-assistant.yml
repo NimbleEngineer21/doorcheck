@@ -1,0 +1,93 @@
+name: Home Assistant integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ha-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: HA ${{ matrix.profile }} (${{ matrix.ha }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read # test the integration from this checkout
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: minimum
+            python: "3.13"
+            ha: "2025.11.0"
+          - profile: previous
+            python: "3.14"
+            ha: "2026.9.4"
+          - profile: current
+            python: "3.14"
+            ha: "2026.10.4"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4" # renovate: datasource=pypi depName=uv
+          enable-cache: false
+      - name: Install isolated HA test environment
+        env:
+          HA_PYTHON: ${{ matrix.python }}
+          HA_PROFILE: ${{ matrix.profile }}
+        run: uv sync --project ha --locked --python "$HA_PYTHON" --no-default-groups --group "$HA_PROFILE"
+      - name: Test lifecycle and type contracts
+        working-directory: ha
+        env:
+          UV_PYTHON: ${{ matrix.python }}
+          HA_PROFILE: ${{ matrix.profile }}
+          EXPECTED_HA_VERSION: ${{ matrix.ha }}
+        run: |
+          uv run --locked --no-default-groups --group "$HA_PROFILE" pytest
+          uv run --locked --no-default-groups --group "$HA_PROFILE" mypy
+
+  mutation:
+    name: HA mutation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # mutate and test only this checkout
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.4" # renovate: datasource=pypi depName=uv
+          enable-cache: false
+      - run: uv sync --project ha --locked --python 3.14
+      - name: Mutate integration behavior
+        working-directory: ha
+        run: |
+          uv run --locked mutmut run --max-children 4
+          uv run --locked mutmut export-cicd-stats
+          uv run --locked mutmut results
+          uv run --locked python ../tools/mutation_gate.py
+
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # validate only this checkout's development integration
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate integration metadata
+        run: >-
+          docker run --rm --volume "$PWD/ha:/github/workspace:ro"
+          ghcr.io/home-assistant/hassfest@sha256:a6a695921327230c07ba89ebbb48778737bc1dda30b00cb60c9276585687fc6d

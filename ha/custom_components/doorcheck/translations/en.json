@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Set up the Doorcheck development preview. Scanning and update alerts are not available yet."
+      }
+    },
+    "abort": {
+      "already_configured": "Doorcheck is already configured.",
+      "single_instance_allowed": "Doorcheck is already configured.",
+      "already_in_progress": "Doorcheck setup is already in progress."
+    }
+  }
+}
