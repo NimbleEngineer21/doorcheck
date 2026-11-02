@@ -2,13 +2,24 @@
   "config": {
     "step": {
       "user": {
-        "description": "Set up the Doorcheck development preview. Scanning and update alerts are not available yet."
+        "description": "Set up the Doorcheck development preview for read-only custom-integration inventory. Scanning and update alerts are not available yet."
       }
     },
     "abort": {
       "already_configured": "Doorcheck is already configured.",
       "single_instance_allowed": "Doorcheck is already configured.",
       "already_in_progress": "Doorcheck setup is already in progress."
+    }
+  },
+  "services": {
+    "get_inventory": {
+      "name": "Get custom integration inventory",
+      "description": "Read declared manifest facts from custom integration folders. This does not scan their code or establish safety."
+    }
+  },
+  "exceptions": {
+    "inventory_not_configured": {
+      "message": "Set up and enable Doorcheck before requesting an inventory."
     }
   }
 }

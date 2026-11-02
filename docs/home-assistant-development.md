@@ -2,9 +2,13 @@
 
 `ha/custom_components/doorcheck` is a development preview, not an installable
 HACS release. It provides a native single-instance setup confirmation, setup,
-unload and reload, plus minimal diagnostics. It does not inventory or scan
-integrations, create entities, raise alerts, contact AI providers or start
-background work. The setup screen states these limits.
+unload and reload, plus minimal diagnostics and an on-demand read-only custom
+integration inventory.
+It does not scan code, create entities, raise alerts, contact AI providers or start
+background inventory work. The setup screen states these limits.
+
+See [Custom integration inventory](ha-inventory.md) for the native action, response
+contract and filesystem coverage boundaries.
 
 ## Dependency boundary
 
@@ -84,9 +88,10 @@ single-instance enforcement and diagnostic data minimization. Diagnostics expose
 only the installed engine version and `scanning_available: false`; entry data,
 options, credentials, names and local paths are not copied into the response.
 
-## Setup translations
+## Native translations
 
-English setup text comes from `ha.config.*` keys in the engine's shared catalog.
+English setup and action text comes from `ha.config.*` and `ha.service.*` keys
+in the engine's shared catalog.
 The exporter writes native HA `strings.json` and `translations/<locale>.json` for
 English and activated shared locales:
 

@@ -5,8 +5,8 @@ See what a Home Assistant integration can do before you let it in.
 > **v0.1 core milestone.** The Python core is available for development.
 > Local-folder and explicit commit/tag GitHub integration scans are available in the current source.
 > The Home Assistant integration and dashboard-card scanning are still being built.
-> A [development-only HA scaffold](docs/home-assistant-development.md) has framework
-> tests; it does not scan or alert.
+> The [HA development preview](docs/home-assistant-development.md) provides read-only
+> inventory and framework tests; it does not scan code or raise alerts.
 
 Doorcheck will scan Home Assistant custom integrations and dashboard cards, report
 what each one can do (the programs it runs, the hosts it contacts, the files it
