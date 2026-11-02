@@ -4,19 +4,36 @@ version = "0.0.0"
 requires-python = ">=3.13.2"
 dependencies = [
     "doorcheck==0.1.0",
-    # HA 2025.11 aiodns needs the pycares 4.x result types.
-    "pycares==4.11.0; python_version < '3.14'",
-    "pytest-homeassistant-custom-component==0.13.294; python_version < '3.14'",
-    "pytest-homeassistant-custom-component==0.13.375; python_version >= '3.14'",
-    "mypy==1.18.2; python_version < '3.14'",
-    "mypy==2.4.0; python_version >= '3.14'",
     "mutmut==3.8.0",
+]
+
+[dependency-groups]
+minimum = [
+    "pytest-homeassistant-custom-component==0.13.294",
+    "mypy==1.18.2",
+    # HA 2025.11 aiodns needs the pycares 4.x result types.
+    "pycares==4.11.0",
+]
+previous = [
+    "pytest-homeassistant-custom-component==0.13.367",
+    "mypy==2.4.0",
+]
+current = [
+    "pytest-homeassistant-custom-component==0.13.375",
+    "mypy==2.4.0",
 ]
 
 [tool.uv]
 package = false
+default-groups = ["current"]
+conflicts = [[{ group = "minimum" }, { group = "previous" }, { group = "current" }]]
 environments = ["python_version == '3.13' or python_full_version >= '3.14.2'"]
 exclude-newer = "3 days"
+
+[tool.uv.dependency-groups]
+minimum = { requires-python = ">=3.13.2,<3.14" }
+previous = { requires-python = ">=3.14.2" }
+current = { requires-python = ">=3.14.2" }
 
 [tool.uv.sources]
 doorcheck = { path = "..", editable = true }

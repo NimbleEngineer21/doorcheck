@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   test:
-    name: HA ${{ matrix.python }}
+    name: HA ${{ matrix.profile }} (${{ matrix.ha }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -21,7 +21,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.13", "3.14"]
+        include:
+          - profile: minimum
+            python: "3.13"
+            ha: "2025.11.0"
+          - profile: previous
+            python: "3.14"
+            ha: "2026.9.4"
+          - profile: current
+            python: "3.14"
+            ha: "2026.10.4"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,14 +42,17 @@ jobs:
       - name: Install isolated HA test environment
         env:
           HA_PYTHON: ${{ matrix.python }}
-        run: uv sync --project ha --locked --python "$HA_PYTHON"
+          HA_PROFILE: ${{ matrix.profile }}
+        run: uv sync --project ha --locked --python "$HA_PYTHON" --no-default-groups --group "$HA_PROFILE"
       - name: Test lifecycle and type contracts
         working-directory: ha
         env:
           UV_PYTHON: ${{ matrix.python }}
+          HA_PROFILE: ${{ matrix.profile }}
+          EXPECTED_HA_VERSION: ${{ matrix.ha }}
         run: |
-          uv run --locked pytest
-          uv run --locked mypy
+          uv run --locked --no-default-groups --group "$HA_PROFILE" pytest
+          uv run --locked --no-default-groups --group "$HA_PROFILE" mypy
 
   mutation:
     name: HA mutation

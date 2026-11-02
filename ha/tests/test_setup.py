@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 from importlib.metadata import version
 from pathlib import Path
 from unittest.mock import patch
@@ -102,3 +103,10 @@ async def test_engine_metadata_read_is_off_the_event_loop(hass: HomeAssistant) -
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
     assert entry.runtime_data.engine_version == expected
+
+
+def test_framework_matches_ci_profile() -> None:
+    expected = os.environ.get("EXPECTED_HA_VERSION")
+    if expected is None:
+        pytest.skip("exact HA profile assertion is enabled by CI or local verification")
+    assert version("homeassistant") == expected
