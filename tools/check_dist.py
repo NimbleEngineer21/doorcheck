@@ -9,7 +9,7 @@ import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
-FORBIDDEN_DIRS = frozenset({"tests", "tools", "fixtures", ".github"})
+FORBIDDEN_DIRS = frozenset({"tests", "tools", "fixtures", ".github", "ha"})
 
 
 def is_forbidden(member: str) -> bool:

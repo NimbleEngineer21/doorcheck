@@ -16,6 +16,8 @@ from tools.check_dist import is_forbidden, main
         "doorcheck/fixtures/sample.py",
         "doorcheck-0.0.0/tools/mutation_gate.py",
         "doorcheck-0.0.0/.github/workflows/ci.yml",
+        "doorcheck-0.0.0/ha/pyproject.toml",
+        "doorcheck/ha/custom_components/doorcheck/__init__.py",
     ],
 )
 def test_forbidden_paths(member: str) -> None:

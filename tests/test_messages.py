@@ -23,7 +23,9 @@ def test_catalog_contains_every_literal_key_in_engine() -> None:
         for node in ast.walk(ast.parse(path.read_text()))
         if isinstance(node, ast.Constant)
         and isinstance(node.value, str)
-        and node.value.startswith(("finding.", "problem.", "presentation.", "cli.", "value."))
+        and node.value.startswith(
+            ("finding.", "problem.", "presentation.", "cli.", "value.", "ha.")
+        )
     }
     data = json.loads(files("doorcheck.presentation").joinpath("tokens.json").read_bytes())
     keys |= {
