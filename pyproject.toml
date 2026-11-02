@@ -51,8 +51,8 @@ requires = ["uv_build==0.13.4"]
 build-backend = "uv_build"
 
 [tool.uv]
-# Wait three days before resolving new releases, matching routine bot updates.
-# This delay is a review aid, not a guarantee that a release is trustworthy.
+# Wait at least three days before resolving new releases; bots add their own
+# cooldowns. These delays aid review but do not establish trust.
 exclude-newer = "3 days"
 
 [tool.uv.build-backend]

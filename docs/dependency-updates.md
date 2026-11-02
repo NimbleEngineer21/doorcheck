@@ -16,7 +16,7 @@ or changes an installed Home Assistant integration automatically.
 | Python/HA minimums, runner images, benchmark revisions and HA locale metadata | Maintainer | Compatibility/evidence changes; not routine dependency bumps |
 
 Dependabot checks weekly on Monday mornings in America/New_York. Routine updates
-have a three-day cooldown; GitHub security updates are a separate mechanism and
+have a seven-day cooldown; GitHub security updates are a separate mechanism and
 are not delayed by that cooldown. There are at most three open Python version
 update PRs and two Actions version update PRs. Minor/patch updates are grouped by
 Python runtime/development scope or Actions; major upgrades remain separate.
@@ -37,7 +37,8 @@ a tool are updated together. When adding another executable-version input, add a
 `# renovate: datasource=pypi depName=NAME` annotation if its version is published
 on PyPI. Do not add that annotation to an Action's own `uses:` reference.
 
-The project resolver also has a three-day release-age setting. This gives time
+The project resolver retains its three-day release-age setting; the bots apply
+the additional waits described above. This gives time
 for upstream problems to become visible; it does not establish trust. Urgent
 security fixes need deliberate review, including any necessary resolver-policy
 exception, rather than automatic merging.
