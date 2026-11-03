@@ -1,1 +1,7 @@
 get_inventory: {}
+scan_integration:
+  fields:
+    directory:
+      required: true
+      selector:
+        text: {}

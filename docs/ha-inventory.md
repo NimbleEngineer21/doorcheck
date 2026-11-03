@@ -18,6 +18,9 @@ this does not create an unauthenticated HTTP endpoint. A response is required.
 An unloaded or unconfigured Doorcheck entry returns a translated HA validation
 error. Reloading does not duplicate the action.
 
+Use an item’s `directory` value to explicitly request an
+[on-demand static scan](ha-scan.md). Inventory calls never start scans.
+
 ## Response
 
 ```json

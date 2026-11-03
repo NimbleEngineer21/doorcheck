@@ -3,12 +3,13 @@
 `ha/custom_components/doorcheck` is a development preview, not an installable
 HACS release. It provides a native single-instance setup confirmation, setup,
 unload and reload, plus minimal diagnostics and an on-demand read-only custom
-integration inventory.
-It does not scan code, create entities, raise alerts, contact AI providers or start
-background inventory work. The setup screen states these limits.
+integration inventory and explicit static scans of one selected integration.
+It does not create entities, raise alerts, contact AI providers or start
+background scans. The setup screen states these limits.
 
 See [Custom integration inventory](ha-inventory.md) for the native action, response
-contract and filesystem coverage boundaries.
+contract and filesystem coverage boundaries. See [On-demand scanning](ha-scan.md)
+for selection, report contracts and snapshot/work limits.
 
 ## Dependency boundary
 
@@ -85,7 +86,7 @@ float to an untested release.
 
 Tests exercise real config-entry flows and lifecycle, concurrent setup,
 single-instance enforcement and diagnostic data minimization. Diagnostics expose
-only the installed engine version and `scanning_available: false`; entry data,
+only the installed engine version and `scanning_available: true`; entry data,
 options, credentials, names and local paths are not copied into the response.
 
 ## Native translations

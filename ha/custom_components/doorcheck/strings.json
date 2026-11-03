@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Set up the Doorcheck development preview for read-only custom-integration inventory. Scanning and update alerts are not available yet."
+        "description": "This development preview provides custom integration inventory and on-demand static scans. It does not provide update alerts or establish safety."
       }
     },
     "abort": {
@@ -12,14 +12,30 @@
     }
   },
   "services": {
+    "scan_integration": {
+      "name": "Scan one custom integration",
+      "description": "Scan a bounded private copy of one installed custom integration directory. Static observations do not establish safety.",
+      "fields": {
+        "directory": {
+          "name": "Integration directory",
+          "description": "The exact directory name shown by Get custom integration inventory."
+        }
+      }
+    },
     "get_inventory": {
       "name": "Get custom integration inventory",
       "description": "Read declared manifest facts from custom integration folders. This does not scan their code or establish safety."
     }
   },
   "exceptions": {
+    "scan_busy": {
+      "message": "A Doorcheck scan is still running. Wait before requesting another."
+    },
+    "scan_invalid_directory": {
+      "message": "Select one custom integration directory name, without a path."
+    },
     "inventory_not_configured": {
-      "message": "Set up and enable Doorcheck before requesting an inventory."
+      "message": "Set up and enable Doorcheck before requesting an inventory or scan."
     }
   }
 }

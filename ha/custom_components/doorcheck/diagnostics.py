@@ -8,4 +8,4 @@ from . import DoorcheckEntry
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: DoorcheckEntry
 ) -> dict[str, str | bool]:
-    return {"engine_version": entry.runtime_data.engine_version, "scanning_available": False}
+    return {"engine_version": entry.runtime_data.engine_version, "scanning_available": True}
