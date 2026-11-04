@@ -85,6 +85,9 @@ currently require manual review; the root engine updater configuration does not
 cover this project. The profiles are pinned for reproducibility and do not silently
 float to an untested release.
 
+The [admin results panel](ha-panel.md) uses these same actions through authenticated
+WebSocket commands. It is a development preview with results held only in browser memory.
+
 [Disposable container acceptance](ha-acceptance.md) additionally exercises normal
 HA startup and authenticated HTTP/WebSocket behavior in all three pinned profiles,
 with redacted evidence and resource measurements.
