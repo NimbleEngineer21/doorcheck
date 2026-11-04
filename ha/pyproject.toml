@@ -58,6 +58,7 @@ extend = "../pyproject.toml"
 "tests/**" = ["S101"]
 
 [tool.mutmut]
-source_paths = ["custom_components/doorcheck/"]
+source_paths = ["custom_components/doorcheck/", "acceptance/evidence.py"]
+also_copy = ["acceptance/"]
 pytest_add_cli_args_test_selection = ["tests/"]
 pytest_add_cli_args = ["--no-cov"]
