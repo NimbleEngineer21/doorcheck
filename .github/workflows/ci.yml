@@ -52,7 +52,7 @@ jobs:
             run: |
               uv run python -m tools.visual_assets --check
               DOORCHECK_VISUAL_BROWSER=1 DOORCHECK_VISUAL_OUTPUT="$RUNNER_TEMP" \
-                uv run pytest tests/test_visual_browser.py --no-cov
+                uv run pytest tests/test_visual_browser.py tests/test_panel_browser.py --no-cov
           - name: audit
             run: |
               uv export --frozen --no-emit-project --all-groups --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"

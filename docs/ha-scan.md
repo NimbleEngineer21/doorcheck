@@ -66,3 +66,7 @@ hooks, alerts or persistent reports in this slice.
 This remains a development preview with an unpublished engine requirement.
 Framework tests do not replace real-instance acceptance or distribution and
 self-revocation prerequisites; see [development setup](home-assistant-development.md).
+
+The [admin results panel](ha-panel.md) provides a directory picker and explicit
+scan button over this action. It renders findings, capabilities and coverage gaps
+without storing reports on disk.
