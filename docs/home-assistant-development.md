@@ -71,7 +71,8 @@ than using the Python version alone to select an HA release.
 
 When a new stable monthly release arrives, move the existing current pin into
 previous, pin the matching test package for the new current release, update CI's
-expected versions and refresh the lockfile. Run all three profiles before claiming
+expected versions, refresh the lockfile and coordinate the container image digests
+and API-status expectations in `ha/acceptance/images.json`. Run all three profiles before claiming
 support. Patch releases update their monthly profile through the same reviewed
 process. Keep the minimum unchanged unless an explicit compatibility change is
 approved; users need not immediately upgrade HA to retain supported behavior.
@@ -84,7 +85,11 @@ currently require manual review; the root engine updater configuration does not
 cover this project. The profiles are pinned for reproducibility and do not silently
 float to an untested release.
 
-Tests exercise real config-entry flows and lifecycle, concurrent setup,
+[Disposable container acceptance](ha-acceptance.md) additionally exercises normal
+HA startup and authenticated HTTP/WebSocket behavior in all three pinned profiles,
+with redacted evidence and resource measurements.
+
+Framework tests exercise real config-entry flows and lifecycle, concurrent setup,
 single-instance enforcement and diagnostic data minimization. Diagnostics expose
 only the installed engine version and `scanning_available: true`; entry data,
 options, credentials, names and local paths are not copied into the response.

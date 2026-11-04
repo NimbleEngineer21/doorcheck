@@ -26,6 +26,11 @@ are not proof of runtime behavior, and an empty findings list is not a safety
 verdict. No results are persisted or included in diagnostics. Source evidence in
 a response can contain sensitive data; treat exports accordingly.
 
+When building API clients, use WebSocket for structured validation errors across
+the supported HA versions. The pinned older HA REST implementations return HTTP
+500 for native service validation errors, while current HA returns HTTP 400;
+this difference is exercised by the [acceptance suite](ha-acceptance.md).
+
 ## Filesystem and work limits
 
 The engine scans a private temporary copy, never the live installed folder.
@@ -38,7 +43,7 @@ report contains a failed `snapshot` check and no engine results. It does not
 silently scan a subset. Missing directories fail the same way.
 
 The copy is limited to 256 entries (files and directories), depth 16 below the
-selected folder, 128 KiB per file, 8 MiB total, and a cooperative five-second
+selected folder, 256 KiB per file, 8 MiB total, and a cooperative five-second
 budget. Each of the capability and Python-rule stages has its own five-second
 cooperative budget and the same file limits. These are not hard elapsed-time or
 memory isolation guarantees: blocked filesystem calls and an individual parser

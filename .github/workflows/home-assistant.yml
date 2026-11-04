@@ -53,6 +53,7 @@ jobs:
         run: |
           uv run --locked --no-default-groups --group "$HA_PROFILE" pytest
           uv run --locked --no-default-groups --group "$HA_PROFILE" mypy
+          MYPYPATH=.. uv run --locked --no-default-groups --group "$HA_PROFILE" mypy acceptance
 
   mutation:
     name: HA mutation
@@ -91,3 +92,38 @@ jobs:
         run: >-
           docker run --rm --volume "$PWD/ha:/github/workspace:ro"
           ghcr.io/home-assistant/hassfest@sha256:a6a695921327230c07ba89ebbb48778737bc1dda30b00cb60c9276585687fc6d
+
+  acceptance:
+    name: HA acceptance (${{ matrix.profile }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # prepare pinned public reference trees and the local engine wheel
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [minimum, previous, current]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.4" # renovate: datasource=pypi depName=uv
+          enable-cache: false
+      - run: uv sync --locked
+      - run: uv build
+      - name: Exercise a disposable offline HA instance
+        env:
+          HA_PROFILE: ${{ matrix.profile }}
+        run: >-
+          uv run --locked python -m ha.acceptance.docker
+          --profile "$HA_PROFILE"
+          --output "$RUNNER_TEMP/acceptance-$HA_PROFILE.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ha-acceptance-${{ matrix.profile }}
+          path: ${{ runner.temp }}/acceptance-${{ matrix.profile }}.json
+          if-no-files-found: error
+          retention-days: 14
