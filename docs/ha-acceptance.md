@@ -45,6 +45,8 @@ retained for repeat runs.
 
 - Doorcheck's native setup confirmation, loaded entry, inventory and explicit
   directory selection.
+- Admin-only panel registration and visibility, public code assets, native panel
+  inventory/scan commands, a retained finding and rejection after removal.
 - Rejection of anonymous/non-admin callers, missing response requests and paths.
 - Preservation of a known inert rule finding and explicit Python parser gaps.
 - Failed snapshots for a missing folder, a symlink and an oversized file.

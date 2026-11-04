@@ -45,6 +45,18 @@ RESOURCES = frozenset(
 )
 REQUIRED = frozenset(
     {
+        "panel_message_id",
+        "panel_public_code_assets",
+        "panel_admin_registration",
+        "panel_module",
+        "panel_inventory",
+        "panel_scan",
+        "panel_finding",
+        "panel_user_authenticated",
+        "panel_hidden_for_user",
+        "panel_commands_admin_only",
+        "panel_removed",
+        "panel_unconfigured",
         "installed_ha_version",
         "local_engine_requirement",
         "network_loopback_only",

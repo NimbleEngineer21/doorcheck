@@ -3,6 +3,7 @@
   "name": "Doorcheck",
   "codeowners": ["@nimbleengineer21"],
   "config_flow": true,
+  "dependencies": ["http", "panel_custom", "websocket_api"],
   "documentation": "https://github.com/NimbleEngineer21/doorcheck",
   "integration_type": "service",
   "iot_class": "local_push",

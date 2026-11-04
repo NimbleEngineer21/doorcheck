@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
+from . import panel
 from .const import DOMAIN
 from .services import register
 
@@ -27,16 +28,19 @@ type DoorcheckEntry = ConfigEntry[RuntimeData]
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the action even when the config entry is unloaded."""
     register(hass)
+    await panel.register(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: DoorcheckEntry) -> bool:
     """Record the installed engine version without starting any scans."""
     engine_version = await hass.async_add_executor_job(version, DOMAIN)
+    await panel.setup(hass)
     entry.runtime_data = RuntimeData(engine_version)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: DoorcheckEntry) -> bool:
-    """There are no platforms, tasks or subscriptions to unload yet."""
+    """Remove the sidebar; actions still enforce the loaded-entry gate."""
+    panel.unload(hass)
     return True
