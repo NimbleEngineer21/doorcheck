@@ -12,7 +12,11 @@ TRUNCATED = "…"
 
 
 class AnalysisLimit(Exception):
-    """The cooperative analysis deadline was reached."""
+    """A cooperative analysis budget or helper-source boundary was reached."""
+
+    def __init__(self, reason: str = "time") -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 def check_deadline(deadline: float | None) -> None:

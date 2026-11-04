@@ -106,6 +106,5 @@ for case in load(Path("benchmark/corpus.toml")):
 
 This focused slice measures the standing 70-case corpus, not the historical
 80-integration survey or every planned browser/internet hook. Existing HTTP
-observations and detection rules remain unchanged. The file-read rule still
-catches 2/3 published cases with zero reference/fixed alarms; its HACS helper-flow
-miss remains documented.
+observations are unchanged. The current file-read rule catches 3/3 published
+cases with zero reference/fixed alarms; see the [helper tracing evidence](rules.md).

@@ -189,6 +189,8 @@ async def exercise(instance: Instance) -> Record:
         )
         require(report["findings"][0]["rule_id"] == "ha-unauth-view-unsanitized-path", "known_rule")
         for directory in (
+            "dc_helpers",
+            "dc_helpers_fixed",
             "dc_broken",
             "dc_oversized",
             "dc_linked",
@@ -199,7 +201,21 @@ async def exercise(instance: Instance) -> Record:
             report, metrics = await measured_scan(instance, session, directory)
             measurements.append(metrics)
             statuses = metrics["checks"]
-            if directory == "dc_broken":
+            if directory in {"dc_helpers", "dc_helpers_fixed"}:
+                checks[directory] = all(value == "complete" for value in statuses.values()) and len(
+                    report["findings"]
+                ) == (1 if directory == "dc_helpers" else 0)
+                if directory == "dc_helpers":
+                    require(
+                        report["findings"][0]["location"]
+                        == {"path": "__init__.py", "line": 9, "column": None},
+                        "helper_finding_location",
+                    )
+                    require(
+                        report["findings"][0]["params"]["sink_path"] == "reader.py",
+                        "helper_sink_path",
+                    )
+            elif directory == "dc_broken":
                 checks["parse_gap"] = (
                     statuses["capabilities"] == statuses["python-rules"] == "partial"
                 )

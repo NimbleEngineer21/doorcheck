@@ -1,7 +1,7 @@
 {
   "ha-unauth-view-unsanitized-path": {
-    "caught": 2,
-    "missed": 1,
+    "caught": 3,
+    "missed": 0,
     "false_alarms": 0
   },
   "zizmor/template-injection": {

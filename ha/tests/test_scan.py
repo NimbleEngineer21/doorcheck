@@ -301,3 +301,29 @@ def test_representative_source_above_old_snapshot_cap_is_scanned(tmp_path: Path)
         "capabilities": Status.COMPLETE,
         "python-rules": Status.COMPLETE,
     }
+
+
+@pytest.mark.parametrize("argument,count", [("filename", 1), ("sanitize_path(filename)", 0)])
+def test_selected_snapshot_resolves_local_helpers_without_import(tmp_path, argument, count):
+    root, selected = source(tmp_path)
+    (selected / "manifest.json").write_text('{"domain":"example"}')
+    (selected / "__init__.py").write_text(
+        "from homeassistant.components.http import HomeAssistantView\n"
+        "from custom_components.example.reader import read\n"
+        "from homeassistant.util import sanitize_path\n"
+        "raise RuntimeError('Never execute')\n"
+        "class Files(HomeAssistantView):\n    requires_auth = False\n"
+        "    url = '/files/{filename:.*}'\n"
+        "    async def get(self, request, filename):\n"
+        f"        return read({argument})\n"
+    )
+    (selected / "reader.py").write_text(
+        "from aiohttp import web\nraise RuntimeError('Never execute')\n"
+        "def read(path):\n    return web.FileResponse(path)\n"
+    )
+    report = scan.scan_integration(root, "example")
+    assert all(check.status is Status.COMPLETE for check in report.checks)
+    assert len(report.findings) == count
+    if count:
+        assert report.findings[0].location.line == 9
+        assert report.findings[0].params["sink_path"] == "reader.py"
