@@ -147,6 +147,7 @@ async def exercise(instance: Instance) -> Record:
         timeout=aiohttp.ClientTimeout(total=40), trust_env=False
     ) as session:
         entry = await configured(instance, session)
+        await panel_api(instance, session)
         status, inventory = await instance.request(
             session, "POST", "/api/services/doorcheck/get_inventory?return_response", {}
         )
@@ -222,7 +223,84 @@ async def exercise(instance: Instance) -> Record:
         await validation_error(
             instance, session, {"directory": "dc_acceptance"}, "inventory_not_configured"
         )
+        await panel_removed(instance, session)
     return {"measurements": measurements, "checks": checks}
+
+
+async def panel_message(
+    instance: Instance,
+    connection: aiohttp.ClientWebSocketResponse,
+    number: int,
+    command: str,
+    **data: Any,
+) -> Record:
+    await connection.send_json({"id": number, "type": command, **data})
+    response = await asyncio.wait_for(connection.receive_json(), 40)
+    if not isinstance(response, dict):
+        raise AcceptanceFailure("panel_message_record")
+    require(response["id"] == number, "panel_message_id")
+    return response
+
+
+async def panel_api(instance: Instance, session: aiohttp.ClientSession) -> None:
+    for asset in ("panel.js", "panel.css"):
+        status, _ = await instance.request(
+            session, "GET", "/doorcheck_static/" + asset, identity=""
+        )
+        require(status == 200, "panel_public_code_assets")
+    async with session.ws_connect(instance.url + "/api/websocket") as connection:
+        await authenticated_socket(instance, connection)
+        panels = await panel_message(instance, connection, 1, "get_panels")
+        config = panels["result"]["doorcheck"]
+        require(config["require_admin"] is True, "panel_admin_registration")
+        require(
+            config["config"]["_panel_custom"]["module_url"] == "/doorcheck_static/panel.js",
+            "panel_module",
+        )
+        inventory = await panel_message(instance, connection, 2, "doorcheck/panel_inventory")
+        require(
+            inventory["success"]
+            and any(item["directory"] == "dc_acceptance" for item in inventory["result"]["items"]),
+            "panel_inventory",
+        )
+        result = await panel_message(
+            instance, connection, 3, "doorcheck/panel_scan", directory="dc_acceptance"
+        )
+        require(result["success"] and result["result"]["complete"], "panel_scan")
+        finding = result["result"]["findings"][0]
+        require(
+            finding["rule"] == "ha-unauth-view-unsanitized-path"
+            and "__init__.py:8" in finding["location"],
+            "panel_finding",
+        )
+    async with session.ws_connect(instance.url + "/api/websocket") as connection:
+        await connection.receive_json()
+        await connection.send_json({"type": "auth", "access_token": instance.tokens["user"]})
+        require((await connection.receive_json())["type"] == "auth_ok", "panel_user_authenticated")
+        panels = await panel_message(instance, connection, 1, "get_panels")
+        require("doorcheck" not in panels["result"], "panel_hidden_for_user")
+        for number, command in ((2, "inventory"), (3, "scan")):
+            data = {"directory": "dc_acceptance"} if command == "scan" else {}
+            denied = await panel_message(
+                instance, connection, number, "doorcheck/panel_" + command, **data
+            )
+            require(
+                not denied["success"] and denied["error"]["code"] == "unauthorized",
+                "panel_commands_admin_only",
+            )
+
+
+async def panel_removed(instance: Instance, session: aiohttp.ClientSession) -> None:
+    async with session.ws_connect(instance.url + "/api/websocket") as connection:
+        await authenticated_socket(instance, connection)
+        panels = await panel_message(instance, connection, 1, "get_panels")
+        require("doorcheck" not in panels["result"], "panel_removed")
+        response = await panel_message(instance, connection, 2, "doorcheck/panel_inventory")
+        require(
+            not response["success"]
+            and response["error"].get("translation_key") == "inventory_not_configured",
+            "panel_unconfigured",
+        )
 
 
 async def authenticated_socket(
