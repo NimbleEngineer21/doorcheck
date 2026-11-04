@@ -30,7 +30,7 @@ jobs:
           - name: types
             run: uv run mypy
           - name: complexity
-            run: uv run complexipy src tools ha/custom_components --max-complexity-allowed 14
+            run: uv run complexipy src tools ha/custom_components ha/acceptance --max-complexity-allowed 14
           - name: localization
             run: uv run python -m tools.localization --check
           - name: imports

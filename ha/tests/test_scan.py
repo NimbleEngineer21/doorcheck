@@ -39,7 +39,7 @@ def test_scan_uses_engine_and_removes_private_snapshot(tmp_path: Path) -> None:
 
     def observe(path, limits):
         assert limits == scan.ScanLimits(
-            max_files=256, max_file_bytes=131072, max_python_bytes=131072, max_seconds=5.0
+            max_files=256, max_file_bytes=262144, max_python_bytes=262144, max_seconds=5.0
         )
         snapshots.append(path)
         assert path != selected
@@ -50,7 +50,7 @@ def test_scan_uses_engine_and_removes_private_snapshot(tmp_path: Path) -> None:
 
     def detect(path, limits=None):
         assert limits == scan.ScanLimits(
-            max_files=256, max_file_bytes=131072, max_python_bytes=131072, max_seconds=5.0
+            max_files=256, max_file_bytes=262144, max_python_bytes=262144, max_seconds=5.0
         )
         return original_rules(path, limits)
 
@@ -290,3 +290,14 @@ class Files(HomeAssistantView):
     assert finding.location.path == "view.py"
     assert finding.location.line == 7
     assert from_dict(to_dict(result)) == result
+
+
+def test_representative_source_above_old_snapshot_cap_is_scanned(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    (selected / "code.py").write_text("pass\n" * 30_000)
+    result = scan.scan_integration(root, "example")
+    assert {check.name: check.status for check in result.checks} == {
+        "snapshot": Status.COMPLETE,
+        "capabilities": Status.COMPLETE,
+        "python-rules": Status.COMPLETE,
+    }
