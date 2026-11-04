@@ -17,7 +17,7 @@ from .inventory import _directory
 
 MAX_ENTRIES = 256
 MAX_BYTES = 8 * 1024 * 1024
-MAX_FILE_BYTES = 128 * 1024
+MAX_FILE_BYTES = 256 * 1024
 MAX_DEPTH = 16
 SECONDS = 5.0
 
