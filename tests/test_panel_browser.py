@@ -244,9 +244,12 @@ def test_empty_inventory_refresh_and_menu(screen):
 
 def test_forced_colors_and_large_text(screen):
     page = screen
-    page.set_viewport_size({"width": 360, "height": 800})
+    page.set_viewport_size({"width": 320, "height": 800})
     page.emulate_media(forced_colors="active", reduced_motion="reduce")
     page.evaluate("document.documentElement.style.fontSize = '200%'")
+    page.locator("doorcheck-panel").evaluate(
+        "e => e.style.setProperty('--dc-body-family', 'Arial, sans-serif')"
+    )
     page.get_by_role("button", name="Scan integration", exact=True).click()
     expect(page.get_by_text("Review", exact=True)).to_be_visible()
     expect(page.get_by_role("button", name="Scan integration", exact=True)).to_be_visible()
