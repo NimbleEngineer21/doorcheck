@@ -49,6 +49,8 @@ retained for repeat runs.
   inventory/scan commands, a retained finding and rejection after removal.
 - Rejection of anonymous/non-admin callers, missing response requests and paths.
 - Preservation of a known inert rule finding and explicit Python parser gaps.
+- An inert cross-file helper finding at its route call site, supporting sink
+  location, and no finding for the corresponding sanitized input.
 - Failed snapshots for a missing folder, a symlink and an oversized file.
 - Scanning the pinned Frigate and Alexa Media Player reference trees, without
   loading either integration or executing their code.

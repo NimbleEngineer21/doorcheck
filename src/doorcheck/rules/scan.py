@@ -9,6 +9,7 @@ from doorcheck.capabilities.model import ScanLimits
 from doorcheck.checks import Problem
 from doorcheck.findings import Finding, Location, param
 from doorcheck.rules.file_view import analyze
+from doorcheck.rules.project import Project
 from doorcheck.rules.source import AnalysisLimit
 from doorcheck.tree import Entry, entries, read_regular
 
@@ -24,6 +25,8 @@ def scan(root: Path, limits: ScanLimits | None = None) -> Scanned:
     findings: list[Finding] = []
     problems: list[Problem] = []
     deadline = time.monotonic() + limits.max_seconds
+
+    project = Project(root, limits, deadline)
 
     def walk_error(error: OSError) -> None:
         problems.append(
@@ -42,7 +45,7 @@ def scan(root: Path, limits: ScanLimits | None = None) -> Scanned:
                     )
                 )
                 break
-            result = _entry(entry, limits, deadline)
+            result = _entry(entry, limits, deadline, project)
             findings.extend(result.findings)
             problems.extend(result.problems)
             if _exhausted(result):
@@ -52,10 +55,10 @@ def scan(root: Path, limits: ScanLimits | None = None) -> Scanned:
     return Scanned(tuple(findings), tuple(problems))
 
 
-def _entry(entry: Entry, limits: ScanLimits, deadline: float) -> Scanned:
+def _entry(entry: Entry, limits: ScanLimits, deadline: float, project: Project) -> Scanned:
     if entry.path.suffix != ".py":
         return Scanned((), ())
-    return _file(entry.path, entry.relative, limits.max_python_bytes, deadline)
+    return _file(entry.path, entry.relative, limits.max_python_bytes, deadline, project)
 
 
 def _exhausted(result: Scanned) -> bool:
@@ -69,7 +72,13 @@ def _location(relative: str) -> Location | None:
         return None
 
 
-def _file(path: Path, relative: str, cap: int, deadline: float | None = None) -> Scanned:
+def _file(
+    path: Path,
+    relative: str,
+    cap: int,
+    deadline: float | None = None,
+    project: Project | None = None,
+) -> Scanned:
     location = _location(relative)
     if location is None:
         problem = Problem("problem.file_path_not_supported", params={"path": param(relative)})
@@ -80,9 +89,9 @@ def _file(path: Path, relative: str, cap: int, deadline: float | None = None) ->
             problem = Problem("problem.file_too_large", location, {"size": str(len(data))})
             return Scanned((), (problem,))
         source = data.decode("utf-8")  # pragma: no mutate - codec names ignore case
-        return Scanned(tuple(analyze(source, relative, deadline=deadline)), ())
-    except AnalysisLimit:
-        problem = Problem("problem.scan_limit_reached", location, {"limit": "time"})
+        return Scanned(tuple(analyze(source, relative, deadline=deadline, project=project)), ())
+    except AnalysisLimit as error:
+        problem = Problem("problem.scan_limit_reached", location, {"limit": error.reason})
     except OSError as error:
         problem = Problem("problem.file_not_readable", location, {"detail": param(str(error))})
     except (SyntaxError, ValueError) as error:

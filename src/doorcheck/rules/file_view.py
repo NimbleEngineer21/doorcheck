@@ -1,17 +1,25 @@
-"""Narrow, intraprocedural route-to-file analysis. Never executes source.
+"""Narrow, bounded route-to-file analysis. Never executes source.
 
 Only direct imported HomeAssistantView subclasses, explicit public views and
 catch-all route parameters are recognized. Unknown transformations and control
 flow stop propagation; absence of a finding is not proof of path confinement.
 """
 
+from __future__ import annotations
+
 import ast
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from doorcheck.findings import Confidence, Finding, Location, Severity
 from doorcheck.rules.path_flow import State, Value, flow
 from doorcheck.rules.path_flow import qualified as _name
 from doorcheck.rules.source import check_deadline, segment, source_lines
+
+if TYPE_CHECKING:
+    from doorcheck.rules.helpers import Hit
+    from doorcheck.rules.project import Project
+
 
 RULE = "ha-unauth-view-unsanitized-path"
 VIEW = "homeassistant.components.http.HomeAssistantView"
@@ -21,7 +29,9 @@ DETAIL = "finding.unauth_file_path_detail"
 ACTION = "finding.unauth_file_path_action"
 
 
-def analyze(source: str, path: str, *, deadline: float | None = None) -> list[Finding]:
+def analyze(
+    source: str, path: str, *, deadline: float | None = None, project: Project | None = None
+) -> list[Finding]:
     tree = ast.parse(source)
     check_deadline(deadline)
     lines = source_lines(source)
@@ -31,6 +41,7 @@ def analyze(source: str, path: str, *, deadline: float | None = None) -> list[Fi
         check_deadline(deadline)
         if isinstance(node, ast.ClassDef) and _public_view(node, aliases):
             found.extend(_view(node, aliases, lines, path, deadline))
+    found.extend(_helpers(tree, aliases, lines, path, deadline, project))
     check_deadline(deadline)
     return found
 
@@ -294,3 +305,63 @@ def _reads(call: ast.Call, aliases: dict[str, str]) -> bool:
         if keyword.arg == "mode":
             mode = keyword.value
     return isinstance(mode, ast.Constant) and mode.value in ("r", "rb", "rt")
+
+
+def _helper_seed(view: ast.ClassDef) -> tuple[ast.FunctionDef | ast.AsyncFunctionDef, State] | None:
+    methods = {
+        n.name: n for n in view.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    method = methods.get("get")
+    if method is None or method.decorator_list:
+        return None
+    args = [*method.args.posonlyargs, *method.args.args]
+    literals = _route_literals(view)
+    names = {a.arg: Value(i >= 2 and _route_arg(a.arg, literals)) for i, a in enumerate(args)}
+    return (method, names) if any(v.tainted for v in names.values()) else None
+
+
+def _helpers(
+    tree: ast.Module,
+    aliases: dict[str, str],
+    lines: list[bytes],
+    path: str,
+    deadline: float | None,
+    project: Project | None,
+) -> Iterator[Finding]:
+    from doorcheck.rules.helpers import Engine
+    from doorcheck.rules.project import unit
+
+    views = [n for n in tree.body if isinstance(n, ast.ClassDef) and _public_view(n, aliases)]
+    if not views:
+        return
+    source = unit(tree, path, aliases)
+    for view in views:
+        seed = _helper_seed(view)
+        if seed is None:
+            continue
+        method, names = seed
+        engine = Engine(project, deadline)
+        engine.invoke(source, method, names)
+        for hit in engine.hits.values():
+            check_deadline(deadline)
+            yield _helper_finding(hit, lines, path)
+
+
+def _helper_finding(hit: Hit, lines: list[bytes], path: str) -> Finding:
+    from doorcheck.findings import param
+
+    return Finding(
+        RULE,
+        Severity.REVIEW,
+        Confidence.MEDIUM,
+        Location(path, hit.site.lineno),
+        SUMMARY,
+        "doorcheck",
+        cwe=22,
+        evidence=segment(lines, hit.site),
+        params={
+            "sink_path": param(hit.sink_path),
+            "sink_line": str(hit.sink_line),
+            "call_chain": param(" -> ".join(f"{p}:{line}" for p, line in hit.chain)),
+        },
+    )

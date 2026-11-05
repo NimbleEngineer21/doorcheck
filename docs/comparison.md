@@ -90,9 +90,10 @@ These are selected source snapshots, not claims about separate release assets.
 For HACS, manifest requirements change: three dependency observations are added;
 three dependency observations and one outside-PyPI requirement observation are
 removed. The latter is the original malformed `fnvhash>=0.1.0<1.0.0` requirement,
-not a newly inferred dependency issue. The existing rule's helper-flow miss is
-unchanged: neither HACS source snapshot produces a file-read finding, so there
-is no finding removal to report.
+not a newly inferred dependency issue. These saved-report examples predate
+helper tracing: neither archived HACS report contains a file-read finding.
+New scans now catch the vulnerable HACS case; see the [current rule evidence](rules.md).
+Comparing an existing report does not rerun detection.
 
 Font Awesome removes the existing finding at
 `fontawesome/custom_component_server.py:19`. Its three capability observations
@@ -101,9 +102,8 @@ still match despite the source fix. Dwains removes the existing finding at
 separate file-path subject changes from `lovelace/themes` to
 `lovelace/themefiles`, producing one removal and one addition.
 
-These counts describe existing observations. Detection remains at 2/3 published
-file-read cases caught and zero alarms on the reference/fixed corpus. Comparing
-reports does not add detection coverage or establish that an update is safe.
+These counts describe the saved observations. Comparing reports does not add
+detection coverage or establish that an update is safe.
 
 ## Compare saved reports from the command line
 
@@ -183,4 +183,4 @@ metadata and complete checks; the inputs were not rescanned by the command.
 
 The reverse Font Awesome comparison adds the existing Review finding at line 19.
 The forward comparison reports its removal without claiming a fix. The HACS
-helper-flow miss remains visible in the source-evidence discussion above.
+row describes the archived reports above, before helper tracing was added.
