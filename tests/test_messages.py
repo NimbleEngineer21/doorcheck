@@ -11,6 +11,7 @@ import pytest
 
 from doorcheck.capabilities.model import COMPUTED, Capability, Kind
 from doorcheck.checks import Status
+from doorcheck.comparison import Limit
 from doorcheck.findings import Location, Severity
 from doorcheck.messages import ENGLISH, MessageError, placeholders, render, render_capability
 
@@ -37,6 +38,7 @@ def test_catalog_contains_every_literal_key_in_engine() -> None:
     expected = keys | {f"capability.{kind.value}" for kind in Kind}
     expected |= {f"severity.{level.value}" for level in Severity}
     expected |= {f"status.{status.value}" for status in Status} | {"value.computed"}
+    expected |= {f"comparison.{limit.value}" for limit in Limit}
     assert ENGLISH.keys() == expected
 
 
