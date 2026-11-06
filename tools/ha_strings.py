@@ -7,7 +7,7 @@ from pathlib import Path
 from doorcheck.messages import render
 from tools.localization import inventory
 
-ROOT = Path(__file__).resolve().parents[1] / "ha/custom_components/doorcheck"
+ROOT = Path(__file__).resolve().parents[1] / "custom_components/doorcheck"
 
 
 def catalog(locale: str | None = None) -> dict[str, object]:

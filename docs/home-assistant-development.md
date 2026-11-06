@@ -1,6 +1,6 @@
 # Home Assistant development scaffold
 
-`ha/custom_components/doorcheck` is a development preview, not an installable
+`custom_components/doorcheck` is a development preview, not an installable
 HACS release. It provides a native single-instance setup confirmation, setup,
 unload and reload, plus minimal diagnostics and an on-demand read-only custom
 integration inventory and explicit static scans of one selected integration.
@@ -31,6 +31,11 @@ Only the library engine is a runtime requirement. Semgrep and other executable
 scanners remain outside the HA host integration. HA testing dependencies live in
 `ha/pyproject.toml` and its separate lockfile; they are not engine dependencies or
 included in the engine wheel/sdist.
+
+The integration lives in `custom_components/doorcheck` at the repository root,
+where HACS looks for it. `ha/custom_components` is a relative symbolic link to that
+folder, so the HA test project in `ha/` imports, type-checks and mutates the same
+files. Edit the files under the root folder.
 
 ## Run the framework tests
 

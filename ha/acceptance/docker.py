@@ -54,7 +54,7 @@ def main() -> int:
         f"type=bind,src={ROOT / 'ha/acceptance'},dst=/work/ha/acceptance,readonly",
         "--mount",
         (
-            f"type=bind,src={ROOT / 'ha/custom_components/doorcheck'},"
+            f"type=bind,src={ROOT / 'custom_components/doorcheck'},"
             "dst=/work/ha/custom_components/doorcheck,readonly"
         ),
         "--mount",
