@@ -53,6 +53,7 @@ REQUIRED = frozenset(
         "panel_scan",
         "panel_finding",
         "panel_saved_result",
+        "panel_changes",
         "panel_review",
         "panel_clear",
         "panel_saved_after_restart",

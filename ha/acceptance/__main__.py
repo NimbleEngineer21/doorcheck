@@ -38,9 +38,10 @@ def require(condition: bool, check: str) -> None:
 
 class Instance:
     def __init__(
-        self, child: asyncio.subprocess.Process, port: int, validation_status: int
+        self, child: asyncio.subprocess.Process, port: int, validation_status: int, config: Path
     ) -> None:
         self.validation_status = validation_status
+        self.custom = config / "custom_components"
         self.child = child
         if child.stdout is None or child.stdin is None:
             raise AcceptanceFailure("child_pipes")
@@ -350,19 +351,42 @@ PANEL_COMMANDS: tuple[tuple[str, Record], ...] = (
 async def panel_saved(
     instance: Instance, connection: aiohttp.ClientWebSocketResponse, scan_id: str
 ) -> None:
-    """Open, review and clear through the panel; the main scans run after this."""
+    """Open, rescan a changed tree, review it and clear; the main scans run after this."""
     data = {"directory": "dc_acceptance"}
     opened = await panel_message(instance, connection, 4, "doorcheck/panel_results", **data)
     require(
         opened["success"] and opened["result"]["latest"]["scan_id"] == scan_id,
         "panel_saved_result",
     )
-    reviewed = await panel_message(
-        instance, connection, 5, "doorcheck/panel_review", scan_id=scan_id, **data
+    # A changed tree gives a newer scan; the first one stays the reviewed scan.
+    added = instance.custom / "dc_acceptance/panel_review.py"
+    added.write_text("VALUE = 1\n")
+    try:
+        rescanned = await panel_message(instance, connection, 5, "doorcheck/panel_scan", **data)
+    finally:
+        added.unlink()
+    view = rescanned["result"]
+    newer = view["latest"]["scan_id"]
+    require(
+        rescanned["success"]
+        and newer != scan_id
+        and view["baseline"]["scan_id"] == scan_id
+        and view["comparison"]["changed"]
+        and view["comparison"]["files"]["added"] == ["panel_review.py"]
+        and view["reviewable"],
+        "panel_changes",
     )
-    require(reviewed["success"] and reviewed["result"]["reviewed"], "panel_review")
-    cleared = await panel_message(instance, connection, 6, "doorcheck/panel_clear")
-    after = await panel_message(instance, connection, 7, "doorcheck/panel_results", **data)
+    reviewed = await panel_message(
+        instance, connection, 6, "doorcheck/panel_review", scan_id=newer, **data
+    )
+    require(
+        reviewed["success"]
+        and reviewed["result"]["reviewed"]
+        and reviewed["result"]["baseline"]["scan_id"] == newer,
+        "panel_review",
+    )
+    cleared = await panel_message(instance, connection, 7, "doorcheck/panel_clear")
+    after = await panel_message(instance, connection, 8, "doorcheck/panel_results", **data)
     require(
         cleared["success"] and after["success"] and after["result"]["latest"] is None,
         "panel_clear",
@@ -495,7 +519,7 @@ async def booted(
         stderr=log,
     )
     try:
-        instance = Instance(child, port, validation_status)
+        instance = Instance(child, port, validation_status, config)
         ready = await instance.record()
         require(ready["ready"], "normal_bootstrap")
         instance.tokens = ready["tokens"]

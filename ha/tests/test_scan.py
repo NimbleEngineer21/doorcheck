@@ -1,7 +1,9 @@
 """Snapshot boundaries and real engine results, without candidate execution."""
 
 import hashlib
+import importlib.util
 import os
+import py_compile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -348,11 +350,11 @@ def test_bytecode_is_recorded_apart_from_the_source_digest(tmp_path: Path) -> No
     clean = scan.scan_integration(root, "example")
     cache = selected / "__pycache__"
     cache.mkdir()
-    (cache / "code.cpython-314.pyc").write_bytes(b"compiled")
+    (cache / "code.cpython-314.pyc").write_bytes(compiled())
     (cache / "notes.txt").write_text("not bytecode")
     loaded = scan.scan_integration(root, "example")
     assert loaded.bytecode == {
-        "__pycache__/code.cpython-314.pyc": hashlib.sha256(b"compiled").hexdigest()
+        "__pycache__/code.cpython-314.pyc": hashlib.sha256(compiled()).hexdigest()
     }
     assert "__pycache__/notes.txt" in loaded.files
     assert "__pycache__/code.cpython-314.pyc" not in loaded.files
@@ -362,24 +364,92 @@ def test_bytecode_is_recorded_apart_from_the_source_digest(tmp_path: Path) -> No
     assert after_load.files == clean.files
 
 
-def test_bytecode_is_hashed_but_never_scanned(tmp_path: Path) -> None:
+def compiled(flags: int = 0, body: bytes = b"code") -> bytes:
+    """A PEP 552 header (magic, flags, 8 check bytes) and a body."""
+    return importlib.util.MAGIC_NUMBER + flags.to_bytes(4, "little") + bytes(8) + body
+
+
+def shipped(result: scan.Scan) -> list[str]:
+    return [c.location.path for c in result.report.capabilities if c.kind.value == "shipped_binary"]
+
+
+def test_interpreter_written_bytecode_is_hashed_but_not_scanned(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    (selected / "pkg").mkdir()
+    (selected / "pkg/code.py").write_text("VALUE = 1\n")
+    (selected / "loose.pyc").write_bytes(b"sourceless")
+    clean = scan.scan_integration(root, "example")
+    # Real interpreter output in both modes that check the source.
+    timestamp = importlib.util.cache_from_source(str(selected / "pkg/code.py"))
+    checked = importlib.util.cache_from_source(str(selected / "pkg/code.py"), optimization=1)
+    for cfile, mode in (
+        (timestamp, py_compile.PycInvalidationMode.TIMESTAMP),
+        (checked, py_compile.PycInvalidationMode.CHECKED_HASH),
+    ):
+        py_compile.compile(
+            str(selected / "pkg/code.py"), cfile, doraise=True, invalidation_mode=mode
+        )
+    (selected / "pkg/__pycache__/notes.txt").write_text("not bytecode")
+    loaded = scan.scan_integration(root, "example")
+    assert shipped(loaded) == ["loose.pyc"]
+    assert loaded.report.capabilities == clean.report.capabilities
+    assert loaded.report.checks == clean.report.checks
+    assert len(loaded.bytecode) == 2
+    assert "pkg/__pycache__/notes.txt" in loaded.files
+
+
+def test_bytecode_that_python_would_not_check_is_scanned(tmp_path: Path) -> None:
     root, selected = source(tmp_path)
     (selected / "code.py").write_text("VALUE = 1\n")
-    (selected / "loose.pyc").write_bytes(b"sourceless")
-    clean = scan.scan_integration(root, "example").report
-    cache = selected / "pkg/__pycache__"
-    cache.mkdir(parents=True)
-    (cache / "code.cpython-314.pyc").write_bytes(b"\x7fELF compiled")
-    (cache / "notes.txt").write_text("not bytecode")
+    cfile = importlib.util.cache_from_source(str(selected / "code.py"))
+    py_compile.compile(
+        str(selected / "code.py"),
+        cfile,
+        doraise=True,
+        invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH,
+    )
+    (selected / "__pycache__/other.cpython-314.pyc").write_bytes(b"\x7fELF compiled")
     loaded = scan.scan_integration(root, "example")
-    # Only the loose .pyc is reported; the interpreter cache is shown by its hashes.
-    assert [(c.kind.value, c.location.path) for c in loaded.report.capabilities] == [
-        ("shipped_binary", "loose.pyc")
-    ]
-    assert loaded.report.capabilities == clean.capabilities
-    assert loaded.report.checks == clean.checks
-    assert set(loaded.bytecode) == {"pkg/__pycache__/code.cpython-314.pyc"}
-    assert "pkg/__pycache__/notes.txt" in loaded.files
+    relative = Path(cfile).relative_to(selected).as_posix()
+    # Still listed with the bytecode hashes, and also reported by the engine.
+    assert shipped(loaded) == sorted([relative, "__pycache__/other.cpython-314.pyc"])
+    assert set(loaded.bytecode) == {relative, "__pycache__/other.cpython-314.pyc"}
+    assert relative not in loaded.files
+
+
+SOURCES = {"code.py": "h", "pkg/code.py": "h", "a/b/code.py": "h"}
+
+
+@pytest.mark.parametrize(
+    ("relative", "data", "expected"),
+    [
+        ("__pycache__/code.cpython-314.pyc", compiled(0), True),
+        ("__pycache__/code.cpython-314.pyc", compiled(3), True),
+        ("__pycache__/code.cpython-314.opt-1.pyc", compiled(0), True),
+        ("__pycache__/code.cpython-313t.opt-2.pyc", compiled(0), True),
+        ("pkg/__pycache__/code.cpython-314.pyc", compiled(0), True),
+        ("a/b/__pycache__/code.cpython-314.pyc", compiled(0), True),
+        ("__pycache__/code.cpython-314.pyc", compiled(0, b""), True),
+        # Python loads an unchecked-hash file with no source check.
+        ("__pycache__/code.cpython-314.pyc", compiled(1), False),
+        # Python refuses other flag values; these are not interpreter output.
+        ("__pycache__/code.cpython-314.pyc", compiled(2), False),
+        ("__pycache__/code.cpython-314.pyc", compiled(4), False),
+        ("__pycache__/code.cpython-314.pyc", compiled(0)[:15], False),
+        ("__pycache__/code.cpython-314.pyc", b"\x7fELF" + compiled(0)[4:], False),
+        ("__pycache__/code.cpython-314.pyc", b"\x00\x00\n\r" + compiled(0)[4:], False),
+        # The name, folder and source must be the ones Python writes and reads.
+        ("__pycache__/code.pyc", compiled(0), False),
+        ("__pycache__/code.cpython-314.opt-3.pyc", compiled(0), False),
+        ("__pycache__/code.cpython-314.extra.pyc", compiled(0), False),
+        ("__pycache__/missing.cpython-314.pyc", compiled(0), False),
+        ("__pycache__/sub/code.cpython-314.pyc", compiled(0), False),
+        ("b/__pycache__/code.cpython-314.pyc", compiled(0), False),
+        ("x/b/__pycache__/code.cpython-314.pyc", compiled(0), False),
+    ],
+)
+def test_interpreter_shaped_bytecode(relative: str, data: bytes, expected: bool) -> None:
+    assert scan.interpreter_shaped(relative, data, SOURCES) is expected
 
 
 def test_bytecode_counts_toward_snapshot_limits(tmp_path: Path) -> None:

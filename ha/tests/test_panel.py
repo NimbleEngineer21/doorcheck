@@ -13,6 +13,7 @@ from homeassistant.components.frontend import DATA_PANELS
 
 from custom_components.doorcheck import panel, results, scan, services
 from tests.test_inventory_service import loaded
+from tests.test_scan import compiled
 
 
 def response(checks=None, evidence="<img src=x onerror=alert(1)>\u202e", capabilities=()):
@@ -115,7 +116,7 @@ async def test_native_inventory_scan_and_loaded_gate(hass, hass_ws_client, tmp_p
     assert result["result"]["reviewed"] is True
     assert result["result"]["comparison"] is None
     (folder / "__pycache__").mkdir()
-    (folder / "__pycache__/__init__.cpython-314.pyc").write_bytes(b"compiled")
+    (folder / "__pycache__/__init__.cpython-314.pyc").write_bytes(compiled())
     (folder / "extra.py").write_text("import subprocess\nsubprocess.run(['x'])")
     await client.send_json({"id": 3, "type": "doorcheck/panel_scan", "directory": "example"})
     second = (await client.receive_json())["result"]
@@ -621,3 +622,26 @@ def test_added_items_are_positions_in_the_latest_report() -> None:
         "other.py:1:1",
         "other.py:1:1",
     ]
+
+
+def test_the_action_sends_removals_as_positions_in_the_reviewed_report() -> None:
+    other = Capability(Kind.PROCESS, Location("other.py", 1, 1), "other")
+    baseline = saved_record(report(capabilities=(other, PROCESS, PROCESS), findings=(FINDING,)))
+    latest = saved_record(report(capabilities=(other,)), at="2026-11-07T00:00:00+00:00")
+    data = services._comparison(baseline, latest)
+    # One object listed twice takes both of its positions.
+    assert data["capabilities"] == {"added": [], "removed": [1, 2]}
+    assert data["findings"] == {"added": [], "removed": [0]}
+    assert data["changed"] is True
+    view = panel.saved_view(results_view(latest, baseline))["comparison"]
+    assert view["removed"]["capabilities"] == [panel.capability_view(PROCESS)] * 2
+
+
+def test_the_reviewed_report_is_parsed_only_for_removals() -> None:
+    baseline = saved_record(report())
+    latest = saved_record(report(capabilities=(PROCESS,)), at="2026-11-07T00:00:00+00:00")
+    view = results_view(latest, baseline)
+    view["results"]["baseline"]["report"] = {"not": "a report"}
+    comparison = panel.saved_view(view)["comparison"]
+    assert comparison["added"] == {"findings": [], "capabilities": [0]}
+    assert comparison["removed"] == {"findings": [], "capabilities": []}

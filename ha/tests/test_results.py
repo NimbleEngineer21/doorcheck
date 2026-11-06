@@ -24,6 +24,7 @@ from custom_components.doorcheck import DOMAIN, results, scan, services
 from custom_components.doorcheck.config_flow import DoorcheckOptionsFlow
 from custom_components.doorcheck.diagnostics import async_get_config_entry_diagnostics
 from tests.test_inventory_service import loaded
+from tests.test_scan import compiled
 
 KEY = results.STORE_KEY
 # Captured before the hass_storage fixture replaces it, to read a real store file.
@@ -65,10 +66,15 @@ async def test_first_complete_scan_becomes_the_baseline_and_survives_restart(
     assert view["saving"] == "on"
     assert view["saved"] is True
     assert view["problems"] == []
-    assert view["baseline"] == view["latest"]
+    # The first complete scan is both, serialized once; so is the top-level report.
+    assert view["baseline"] is view["latest"]
+    assert first["report"] is view["latest"]["report"]
     assert view["comparison"] == {
+        "changed": False,
         "limits": [],
         "same_artifact": True,
+        "findings": {"added": [], "removed": []},
+        "capabilities": {"added": [], "removed": []},
         "files": {"added": [], "removed": [], "changed": []},
         "bytecode": {"added": [], "removed": [], "changed": []},
     }
@@ -91,12 +97,16 @@ async def test_changes_are_compared_with_the_reviewed_scan_until_marked(
     (folder / "extra.py").write_text("B = 2")
     cache = folder / "__pycache__"
     cache.mkdir()
-    (cache / "code.cpython-314.pyc").write_bytes(b"compiled")
+    (cache / "code.cpython-314.pyc").write_bytes(compiled())
     second = (await call(hass, "scan_integration", directory="example"))["results"]
     assert second["baseline"] == first["latest"]
+    assert second["baseline"] is not second["latest"]
     assert second["comparison"] == {
+        "changed": True,
         "limits": [],
         "same_artifact": False,
+        "findings": {"added": [], "removed": []},
+        "capabilities": {"added": [0], "removed": []},
         "files": {"added": ["extra.py"], "removed": [], "changed": ["code.py"]},
         "bytecode": {"added": ["__pycache__/code.cpython-314.pyc"], "removed": [], "changed": []},
     }
@@ -588,14 +598,14 @@ async def test_a_rescan_that_only_adds_bytecode_cannot_be_reviewed_with_the_old_
     folder = installed(hass, tmp_path)
     first = (await call(hass, "scan_integration", directory="example"))["results"]
     (folder / "__pycache__").mkdir()
-    (folder / "__pycache__/code.cpython-314.pyc").write_bytes(b"planted")
+    (folder / "__pycache__/code.cpython-314.pyc").write_bytes(compiled())
     second = (await call(hass, "scan_integration", directory="example"))["results"]
     # The source digest is unchanged; only the scan ID tells the two scans apart.
     target = second["latest"]["report"]["target"]
     assert target["artifact_sha256"] == first["latest"]["report"]["target"]["artifact_sha256"]
     assert second["latest"]["scan_id"] != first["latest"]["scan_id"]
     assert second["baseline"]["scan_id"] == first["latest"]["scan_id"]
-    # Bytecode is never a capability; the saved paths are what show it.
+    # Interpreter-shaped bytecode is not a capability; the saved paths show it.
     assert second["latest"]["report"]["capabilities"] == first["latest"]["report"]["capabilities"]
     assert second["latest"]["bytecode"] == ["__pycache__/code.cpython-314.pyc"]
     assert second["baseline"]["bytecode"] == []

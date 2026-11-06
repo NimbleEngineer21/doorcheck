@@ -119,6 +119,7 @@ def screen(browser):
           if (msg.type.endsWith('inventory')) return structuredClone(inventory);
           if (window.delayed) return await new Promise(resolve => {window.finish = resolve});
           const kind = msg.type.split('_').at(-1);
+          if (window.fail?.[kind]) throw window.fail[kind];
           if (kind === 'scan') stored[msg.directory] = wrap(report);
           if (kind === 'review') {
             if (window.reviewFailure) throw window.reviewFailure;
@@ -186,7 +187,8 @@ def test_incomplete_empty_results_and_error_recovery(screen):
     page.get_by_role("button", name="Scan integration", exact=True).click()
     expect(page.get_by_role("alert")).to_have_text(ENGLISH["ha.service.scan_busy"])
     expect(page.get_by_role("alert")).to_be_focused()
-    expect(page.locator("#results")).to_have_count(0)
+    # A refused scan leaves the saved result on screen.
+    expect(page.get_by_text("A file could not be parsed.", exact=True)).to_be_visible()
     page.evaluate("window.failure = null")
     page.get_by_role("button", name="Scan integration", exact=True).click()
     expect(page.locator("#results")).to_be_visible()
@@ -519,3 +521,71 @@ def test_session_change_closes_the_dialog_and_discards_a_pending_open(screen):
     page.evaluate("window.delayed = false")
     expect(page.get_by_text(ENGLISH["ha.panel.changed"], exact=True)).to_have_count(0)
     assert all(not call["type"].endswith("_clear") for call in page.evaluate("calls"))
+
+
+def test_an_unreadable_first_item_still_shows_the_inventory(screen):
+    page = screen
+    page.evaluate(
+        """() => {inventory.items.unshift({directory: 'Old_Backup', name: 'Old_Backup',
+          version: null, problems: ['The folder name is not a valid integration domain.']});
+          window.fail = {results: {code: 'home_assistant_error',
+            translation_key: 'scan_invalid_directory'}}}"""
+    )
+    page.get_by_role("button", name="Refresh inventory", exact=True).click()
+    alert = page.get_by_role("alert")
+    expect(alert).to_have_text(ENGLISH["ha.service.scan_invalid_directory"])
+    expect(alert).to_be_focused()
+    select = page.get_by_label("Custom integration", exact=True)
+    expect(select).to_be_enabled()
+    expect(select).to_have_value("Old_Backup")
+    page.evaluate("() => {window.fail = {}; stored.second = changed()}")
+    select.select_option("second")
+    expect(page.get_by_text(ENGLISH["ha.panel.changed"], exact=True)).to_be_visible()
+    expect(page.get_by_role("alert")).to_have_count(0)
+
+
+def test_a_refused_scan_keeps_the_saved_result(screen):
+    page = screen
+    open_changed(page)
+    page.evaluate(
+        "window.fail = {scan: {code: 'home_assistant_error', translation_key: 'scan_busy'}}"
+    )
+    page.get_by_role("button", name="Scan integration", exact=True).click()
+    expect(page.get_by_role("alert")).to_have_text(ENGLISH["ha.service.scan_busy"])
+    expect(page.get_by_text(ENGLISH["ha.panel.changed"], exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name=ENGLISH["ha.panel.review"])).to_be_enabled()
+
+
+def test_a_failed_read_after_clear_shows_no_deleted_result(screen):
+    page = screen
+    open_changed(page)
+    page.evaluate("window.fail = {results: {code: 'unknown_error'}}")
+    page.get_by_role("button", name=ENGLISH["ha.panel.clear"], exact=True).click()
+    page.get_by_role("button", name=ENGLISH["ha.panel.clear_confirm"]).click()
+    expect(page.get_by_role("alert")).to_have_text(ENGLISH["ha.panel.error"])
+    expect(page.get_by_role("status")).to_have_text(ENGLISH["ha.panel.cleared"])
+    expect(page.get_by_text(ENGLISH["ha.panel.changed"], exact=True)).to_have_count(0)
+    expect(page.get_by_role("button", name=ENGLISH["ha.panel.review"])).to_have_count(0)
+    assert page.evaluate("calls.at(-2)") == {"type": "doorcheck/panel_clear"}
+
+
+def test_a_clear_confirmed_during_other_work_runs_after_it(screen):
+    page = screen
+    open_changed(page)
+    page.evaluate("window.delayed = true")
+    page.get_by_label("Custom integration", exact=True).select_option("second")
+    expect(page.get_by_role("status")).to_have_text(ENGLISH["ha.panel.opening"])
+    # Work can start while the dialog is open only outside the panel's own controls.
+    page.evaluate("panel.dialog.showModal()")
+    page.get_by_role("button", name=ENGLISH["ha.panel.clear_confirm"]).click()
+    # The close event is a later task: let it run while the open is still pending.
+    page.evaluate("new Promise(resolve => setTimeout(resolve, 0))")
+    assert page.evaluate("panel.busy") is True
+    assert all(not call["type"].endswith("_clear") for call in page.evaluate("calls"))
+    page.evaluate("() => {window.delayed = false; finish(changed())}")
+    expect(page.get_by_role("status")).to_have_text(ENGLISH["ha.panel.cleared"])
+    assert page.evaluate("calls.slice(-2)") == [
+        {"type": "doorcheck/panel_clear"},
+        {"type": "doorcheck/panel_results", "directory": "second"},
+    ]
+    expect(page.get_by_text(ENGLISH["ha.panel.no_saved"], exact=True)).to_be_visible()

@@ -26,6 +26,7 @@ class DoorcheckPanel extends HTMLElement {
     this.saved = null;
     this.notice = '';
     this.full = null;
+    this.queued = false;
     this.counts = {};
     this.live = node('p', '', {role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true'});
     this.content = node('main');
@@ -56,6 +57,7 @@ class DoorcheckPanel extends HTMLElement {
     this.saved = null;
     this.error = '';
     this.notice = '';
+    this.queued = false;
     this.live.textContent = '';
     this.content.replaceChildren();
     if (this.dialog.open) this.dialog.close('');
@@ -110,8 +112,7 @@ class DoorcheckPanel extends HTMLElement {
       apply(result);
     } catch (error) {
       if (generation !== this.epoch || !this.isConnected) return;
-      this.error = KNOWN_ERRORS.includes(error?.translation_key)
-        ? this.messages[error.translation_key] : this.messages.error;
+      this.error = this.describe(error);
       if (error?.code === 'unauthorized') {
         this.items = [];
         this.inventory = null;
@@ -126,8 +127,13 @@ class DoorcheckPanel extends HTMLElement {
         this.render();
         if (this.saved) this.shadowRoot.querySelector('#results').focus();
         if (this.error) this.shadowRoot.querySelector('[role="alert"]').focus();
+        if (this.queued) this.clearSaved();
       }
     }
+  }
+  describe(error) {
+    return KNOWN_ERRORS.includes(error?.translation_key)
+      ? this.messages[error.translation_key] : this.messages.error;
   }
   show(saved) {
     this.saved = saved;
@@ -143,12 +149,21 @@ class DoorcheckPanel extends HTMLElement {
     return this.perform(async () => {
       const inventory = await this.request('inventory');
       const directory = inventory.items[0]?.directory;
-      return {inventory, saved: directory ? await this.request('results', {directory}) : null};
+      let saved = null, failure = null;
+      try {
+        if (directory) saved = await this.request('results', {directory});
+      } catch (error) {
+        // One unreadable item (such as an invalid folder name) must not hide the inventory.
+        if (error?.code === 'unauthorized') throw error;
+        failure = error;
+      }
+      return {inventory, saved, failure};
     }, result => {
       this.inventory = result.inventory;
       this.items = result.inventory.items;
       this.selected = this.items[0]?.directory || '';
       this.show(result.saved);
+      if (result.failure) this.error = this.describe(result.failure);
     }, this.messages.loading);
   }
   open() {
@@ -159,7 +174,7 @@ class DoorcheckPanel extends HTMLElement {
   }
   scan() {
     if (this.busy || !this.selected) return;
-    this.saved = null;
+    // The saved result stays on screen until a new result replaces it.
     const directory = this.selected;
     return this.perform(() => this.request('scan', {directory}), result => this.show(result),
       this.messages.scanning);
@@ -186,18 +201,24 @@ class DoorcheckPanel extends HTMLElement {
     this.dialog.showModal();
   }
   closed() {
-    if (this.dialog.returnValue !== 'clear' || this.busy || !this.started) {
+    if (this.dialog.returnValue !== 'clear' || !this.started) {
       this.shadowRoot.getElementById('clear')?.focus();
       return;
     }
+    // A confirmed clear is never dropped: it runs when the current work ends.
+    if (this.busy) this.queued = true;
+    else return this.clearSaved();
+  }
+  clearSaved() {
+    this.queued = false;
     const directory = this.selected;
     return this.perform(async () => {
       await this.request('clear');
-      return directory ? this.request('results', {directory}) : null;
-    }, result => {
-      this.show(result);
+      // The store is gone even if reading it back fails.
+      this.show(null);
       this.notice = this.messages.cleared;
-    }, this.messages.clearing);
+      return directory ? this.request('results', {directory}) : null;
+    }, result => this.show(result), this.messages.clearing);
   }
   button(label, id, action, disabled = false) {
     const button = node('button', label, {type: 'button', id});
@@ -250,7 +271,7 @@ class DoorcheckPanel extends HTMLElement {
       }
       children.push(inventory);
     }
-    if (this.saved) children.push(this.results());
+    if (this.saved) children.push(this.results(offline));
     else if (!this.busy) children.push(node('p', this.items.length ? m.ready : m.empty));
     this.content.replaceChildren(...children);
     this.content.setAttribute('aria-busy', String(this.busy));
@@ -269,7 +290,7 @@ class DoorcheckPanel extends HTMLElement {
     text.append(time);
     return text;
   }
-  results() {
+  results(offline) {
     const saved = this.saved, m = this.messages, latest = saved.latest;
     const results = node('section', null, {id: 'results', tabindex: '-1'});
     for (const problem of saved.problems) results.append(node('p', problem, {class: 'gap'}));
@@ -294,7 +315,7 @@ class DoorcheckPanel extends HTMLElement {
     for (const limit of comparison?.limits || []) results.append(node('p', limit, {class: 'gap'}));
     if (saved.reviewable) {
       results.append(node('p', m.review_detail),
-        this.button(m.review, 'review', () => this.review(), this.busy || this._hass.connected === false));
+        this.button(m.review, 'review', () => this.review(), this.busy || offline));
     }
     // A limit alone (such as new rules) is a change with no list to show.
     const changes = comparison?.changed ? this.changes(comparison) : null;

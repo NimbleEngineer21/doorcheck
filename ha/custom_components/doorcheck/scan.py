@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import re
 import stat
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -23,6 +24,11 @@ MAX_BYTES = 8 * 1024 * 1024
 MAX_FILE_BYTES = 256 * 1024
 MAX_DEPTH = 16
 SECONDS = 5.0
+# <stem>.<cache tag>[.opt-N].pyc, as importlib.util.cache_from_source names it.
+CACHE_NAME = re.compile(r"([^.]+)\.[^.]+(?:\.opt-[12])?\.pyc")
+# PEP 552 flags: 0 checks the source time and size, 3 checks a source hash.
+# 1 (unchecked hash) loads without any source check; other values are refused.
+CHECKED_FLAGS = frozenset({0, 3})
 
 
 class SnapshotError(Exception):
@@ -48,6 +54,7 @@ class Budget:
     entries: int = 0
     size: int = 0
     hashes: dict[str, str] = field(default_factory=dict)
+    bytecode: dict[Path, tuple[str, bytes]] = field(default_factory=dict)
 
     def tick(self) -> None:
         self.entries += 1
@@ -73,10 +80,18 @@ def _file(parent: int, name: str, destination: Path, budget: Budget, relative: s
     ):
         raise SnapshotError
     budget.hashes[relative] = hashlib.sha256(data).hexdigest()
-    # Interpreter-written bytecode is read, capped and hashed, but kept out of the
-    # private copy: the engine never reports it. Its saved hashes show it instead.
-    if not is_bytecode(relative):
+    if is_bytecode(relative):
+        # Decided after the copy, when every source file is known.
+        budget.bytecode[destination] = (relative, data)
+    else:
         destination.write_bytes(data)
+
+
+def _copy_unexpected_bytecode(budget: Budget) -> None:
+    """Interpreter-shaped bytecode stays hash-only; the engine reports the rest."""
+    for destination, (relative, data) in budget.bytecode.items():
+        if not interpreter_shaped(relative, data, budget.hashes):
+            destination.write_bytes(data)
 
 
 def _copy(parent: int, destination: Path, budget: Budget, depth: int = 0, prefix: str = "") -> None:
@@ -106,6 +121,22 @@ def is_bytecode(relative: str) -> bool:
     return "__pycache__" in folders and name.endswith(".pyc")
 
 
+def interpreter_shaped(relative: str, data: bytes, files: Mapping[str, str]) -> bool:
+    """The file has the name, source and header that Python writes for itself.
+
+    This does not prove that the code was compiled from the source: a forged
+    time-checked or hash-checked header passes. It finds bytecode that Python
+    would load with no source check, and files that are not bytecode at all.
+    """
+    *folders, name = relative.split("/")  # is_bytecode: at least one folder
+    matched = CACHE_NAME.fullmatch(name)
+    if folders[-1] != "__pycache__" or matched is None:
+        return False
+    source = "/".join([*folders[:-1], matched[1] + ".py"])
+    flags = int.from_bytes(data[4:8], "little")
+    return source in files and len(data) >= 16 and data[2:4] == b"\r\n" and flags in CHECKED_FLAGS
+
+
 def source_digest(files: Mapping[str, str]) -> str:
     """The engine's installed-file digest format, for a copy holding only files."""
     digest = hashlib.sha256()
@@ -129,6 +160,7 @@ def scan_integration(root: Path, directory: str) -> Scan:
             snapshot = Path(temporary)
             with _directory(root) as parent, _directory(directory, parent) as selected:
                 _copy(selected, snapshot, budget)
+            _copy_unexpected_bytecode(budget)
             limits = ScanLimits(
                 max_files=MAX_ENTRIES,
                 max_file_bytes=MAX_FILE_BYTES,

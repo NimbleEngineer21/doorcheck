@@ -14,7 +14,7 @@ from homeassistant.components.websocket_api.decorators import (
 from homeassistant.core import HomeAssistant
 
 from doorcheck.capabilities import Capability
-from doorcheck.comparison import Limit, compare
+from doorcheck.comparison import Limit
 from doorcheck.findings import Finding, Location
 from doorcheck.messages import ENGLISH, render, render_capability
 from doorcheck.report import Report, from_dict
@@ -273,35 +273,30 @@ def changes(data: dict[str, list[str]]) -> dict[str, list[str]]:
     return {kind: paths(data[kind]) for kind in ("added", "removed", "changed")}
 
 
-def positions(items: tuple[object, ...], chosen: tuple[object, ...]) -> list[int]:
-    index = {id(item): number for number, item in enumerate(items)}
-    return [index[id(item)] for item in chosen]
-
-
-def comparison_view(baseline: Report, latest: Report, data: dict[str, Any]) -> dict[str, Any]:
-    compared = compare(baseline, latest)
+def comparison_view(baseline: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    """Format the action's comparison; the action decides what changed."""
     limits = set(data["limits"])
-    # Added items are already in the latest report; send their positions, not copies.
-    added = {
-        "findings": positions(latest.findings, compared.findings.added),
-        "capabilities": positions(latest.capabilities, compared.capabilities.added),
-    }
-    removed = {
-        "findings": [finding_view(f) for f in compared.findings.removed],
-        "capabilities": [capability_view(c) for c in compared.capabilities.removed],
-    }
-    files, bytecode = changes(data["files"]), changes(data["bytecode"])
-    lists = [*added.values(), *removed.values(), *files.values(), *bytecode.values()]
+    removed: dict[str, list[dict[str, Any]]] = {"findings": [], "capabilities": []}
+    if data["findings"]["removed"] or data["capabilities"]["removed"]:
+        # The reviewed report is parsed only when it has items to show.
+        report = from_dict(baseline["report"])
+        removed = {
+            "findings": [finding_view(report.findings[i]) for i in data["findings"]["removed"]],
+            "capabilities": [
+                capability_view(report.capabilities[i]) for i in data["capabilities"]["removed"]
+            ],
+        }
     return {
-        "changed": bool(limits) or any(lists),
+        "changed": data["changed"],
         "limits": [render("comparison." + limit) for limit in data["limits"]],
         "rules_changed": bool(limits & {Limit.ENGINE_VERSION, Limit.CHECKS}),
         # A removal is proven only when the latest scan covered everything.
         "unproven": Limit.AFTER_INCOMPLETE in limits,
-        "added": added,
+        # Added items are positions in the latest report, which the view already holds.
+        "added": {kind: data[kind]["added"] for kind in ("findings", "capabilities")},
         "removed": removed,
-        "files": files,
-        "bytecode": bytecode,
+        "files": changes(data["files"]),
+        "bytecode": changes(data["bytecode"]),
     }
 
 
@@ -335,9 +330,7 @@ def saved_view(result: dict[str, Any]) -> dict[str, Any]:
             and complete(latest_report),
             "comparison": None
             if baseline is None or reviewed
-            else comparison_view(
-                from_dict(baseline["report"]), latest_report, results["comparison"]
-            ),
+            else comparison_view(baseline, results["comparison"]),
         }
     )
     return view

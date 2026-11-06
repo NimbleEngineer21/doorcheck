@@ -24,9 +24,11 @@ The panel shows the [saved results](ha-baselines.md) of the selected integration
   found, then the files and bytecode files that were added, removed or changed.
   The full result of the latest scan is one step below, in **Full results of the
   latest scan**. When there is nothing to compare, the full result shows first.
-- **Python bytecode files:** the interpreter-written `__pycache__/*.pyc` paths of
-  the latest scan. Doorcheck hashes these files but does not scan them, so they
-  never appear in **What it can do**.
+- **Python bytecode files:** the `__pycache__/*.pyc` paths of the latest scan.
+  Doorcheck hashes each one. A file with the name, source and header that Python
+  writes for itself is not scanned, so it does not appear in **What it can do**.
+  Any other bytecode file is also reported there as a shipped binary. See
+  [Identity](ha-baselines.md#identity) for the exact rules and their limit.
 
 Separate text marks these cases:
 

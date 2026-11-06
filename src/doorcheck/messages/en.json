@@ -84,7 +84,7 @@
   "ha.panel.bytecode": "Python bytecode files",
   "ha.panel.bytecode_added": "Bytecode files added",
   "ha.panel.bytecode_changed": "Bytecode files changed",
-  "ha.panel.bytecode_note": "Python writes these cache files when it loads the integration. Doorcheck does not scan them; it records the SHA-256 of each file. A bytecode file can run in place of its source, so check any that you do not expect.",
+  "ha.panel.bytecode_note": "Python writes these cache files when it loads the integration. Doorcheck records the SHA-256 of each file. A file that has the form Python writes is not scanned; any other file is reported under What it can do. A bytecode file can run in place of its source, so check any that you do not expect.",
   "ha.panel.bytecode_removed": "Bytecode files removed",
   "ha.panel.cancel": "Cancel",
   "ha.panel.capabilities": "What it can do",
