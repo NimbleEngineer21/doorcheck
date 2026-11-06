@@ -32,22 +32,22 @@ Security = "https://github.com/nimbleengineer21/doorcheck/security/policy"
 
 [dependency-groups]
 dev = [
-    "commitizen==4.19.2",
-    "complexipy==8.1.0",
+    "commitizen==4.19.3",
+    "complexipy==8.3.0",
     "import-linter==2.15",
     "jsonschema==4.26.0",
-    "mutmut==3.8.0",
+    "mutmut==3.8.1",
     "mypy==2.4.0",
     "pip-audit==2.10.1",
     "playwright==1.64.1",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "resvg-py==0.5.0",
-    "ruff==0.17.1",
+    "ruff==0.17.3",
 ]
 
 [build-system]
-requires = ["uv_build==0.13.4"]
+requires = ["uv_build==0.13.6"]
 build-backend = "uv_build"
 
 [tool.uv]

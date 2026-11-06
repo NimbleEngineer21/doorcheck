@@ -4,7 +4,7 @@ version = "0.0.0"
 requires-python = ">=3.13.2"
 dependencies = [
     "doorcheck==0.1.0",
-    "mutmut==3.8.0",
+    "mutmut==3.8.1",
 ]
 
 [dependency-groups]
