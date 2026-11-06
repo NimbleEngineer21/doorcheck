@@ -1,6 +1,6 @@
 [project]
 name = "doorcheck"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "See what a Home Assistant integration can do before you let it in."
 readme = "README.md"
 license = "Apache-2.0"
@@ -166,6 +166,8 @@ also_copy = [
     "benchmark/", "tools/templates/", "tools/visual-check.js", "docs/",
     ".github/workflows/",
     "custom_components/doorcheck/",
+    # The release check reads these; a directory entry creates mutants/ha first.
+    "hacs.json", "ha/acceptance/", "ha/pyproject.toml",
 ]
 # Coverage of mutated copies is meaningless and would fail the threshold.
 pytest_add_cli_args = ["--no-cov"]

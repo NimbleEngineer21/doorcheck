@@ -1,0 +1,206 @@
+name: Release
+
+# A v* tag builds the engine once, runs the Home Assistant acceptance suite on
+# that exact wheel, publishes it to PyPI after the maintainer approves the `pypi`
+# environment, attaches the integration ZIP to a GitHub release for HACS, and
+# then installs the published package from PyPI and scans the published release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # check out the tagged code; nothing else
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the main history, to check the tag is on it
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.4" # renovate: datasource=pypi depName=uv
+          enable-cache: false
+      - run: uv sync --locked
+      - name: Require a reviewed commit on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Require the tag to match every version
+        run: uv run python -m tools.release check --tag "$GITHUB_REF_NAME"
+      - id: version
+        name: Read the version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          prerelease="$(uv run python -c 'import sys; from packaging.version import Version; print(str(Version(sys.argv[1]).is_prerelease).lower())' "$version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+      - name: Build the wheel, sdist and integration ZIP
+        run: |
+          uv build
+          uv run python -m tools.check_dist dist/*
+          uv run python -m tools.release zip dist/doorcheck.zip
+          (cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 90
+
+  acceptance:
+    name: acceptance (${{ matrix.profile }})
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # prepare pinned public reference trees; the wheel comes from build
+    strategy:
+      fail-fast: true
+      matrix:
+        profile: [minimum, previous, current]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.4" # renovate: datasource=pypi depName=uv
+          enable-cache: false
+      - run: uv sync --locked
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: Verify the downloaded files
+        run: cd dist && sha256sum --check --strict SHA256SUMS
+      - name: Exercise a disposable offline HA instance with the built wheel
+        env:
+          HA_PROFILE: ${{ matrix.profile }}
+        run: >-
+          uv run --locked python -m ha.acceptance.docker
+          --profile "$HA_PROFILE"
+          --output "$RUNNER_TEMP/acceptance-$HA_PROFILE.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: release-acceptance-${{ matrix.profile }}
+          path: ${{ runner.temp }}/acceptance-${{ matrix.profile }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: publish to PyPI
+    needs: [build, acceptance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/doorcheck/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write # trusted publishing to PyPI; the only job that can publish
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: Select the engine files
+        run: |
+          (cd dist && sha256sum --check --strict SHA256SUMS)
+          mkdir pypi-dist
+          cp dist/*.whl dist/*.tar.gz pypi-dist/
+          ls -l pypi-dist
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: pypi-dist/
+
+  github-release:
+    name: GitHub release
+    needs: [build, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write # create the release for this tag and attach its files
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          (cd dist && sha256sum --check --strict SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --prerelease="$PRERELEASE" \
+            --title "Doorcheck $VERSION" \
+            --notes "Pre-release. Engine: https://pypi.org/project/doorcheck/$VERSION/
+          Install: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/install.md"
+
+  smoke:
+    name: install from PyPI and scan the release
+    needs: [build, github-release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: ${{ runner.temp }}/dist
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.4" # renovate: datasource=pypi depName=uv
+          enable-cache: false
+      # No checkout, and --no-config: the project's three-day resolution delay
+      # would hide the version that was just published.
+      - name: Require PyPI to serve the exact built files
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        working-directory: ${{ runner.temp }}
+        run: |
+          grep -E '\.(whl|tar\.gz)$' dist/SHA256SUMS | sort > expected
+          for attempt in $(seq 1 15); do
+            if curl -fsS "https://pypi.org/pypi/doorcheck/$VERSION/json" -o release.json \
+              && jq -r '.urls[] | "\(.digests.sha256)  \(.filename)"' release.json | sort > served \
+              && cmp -s expected served; then
+              cat served
+              exit 0
+            fi
+            echo "Attempt $attempt: PyPI does not serve the built files yet."
+            sleep 20
+          done
+          diff expected served || true
+          exit 1
+      - name: Install from PyPI into a new environment
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        working-directory: ${{ runner.temp }}
+        run: |
+          uv venv --no-config --python 3.14 smoke
+          for attempt in $(seq 1 10); do
+            if uv pip install --no-config --no-cache --python smoke "doorcheck==$VERSION"; then
+              break
+            fi
+            [ "$attempt" -lt 10 ] || exit 1
+            sleep 20
+          done
+          smoke/bin/python -c 'import importlib.metadata, sys; assert importlib.metadata.version("doorcheck") == sys.argv[1]' "$VERSION"
+          smoke/bin/doorcheck --help
+      - name: Scan the published release with the published engine
+        working-directory: ${{ runner.temp }}
+        run: smoke/bin/doorcheck scan --repo "$GITHUB_REPOSITORY" --tag "$GITHUB_REF_NAME"

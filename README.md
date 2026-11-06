@@ -83,13 +83,18 @@ for problem in result.problems:
 The capability reader does not import or execute the scanned Python. Problem
 keys expose coverage gaps; the [shared English catalog](docs/messages.md)
 provides explanations for capabilities, findings and scan problems. External
-scanners are separate executables, not installed by this example. The package is not yet published to PyPI.
+scanners are separate executables, not installed by this example.
+
+## Install
+
+Version 0.1.0a1 is the first pre-release. [Install the pre-release](docs/install.md)
+describes the HACS steps and the PyPI package. It has no self-revocation yet.
 
 ## Supported versions
 
-The planned Home Assistant integration targets Home Assistant 2025.11 and newer,
-which means Python 3.13.2 or newer. It will install the scanning engine from
-PyPI pinned to an exact version when that integration ships.
+The Home Assistant integration supports Home Assistant 2025.11 and newer, which
+means Python 3.13.2 or newer. It installs the scanning engine from PyPI, pinned to
+an exact version.
 
 ## Development
 

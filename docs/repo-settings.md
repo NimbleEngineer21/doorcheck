@@ -25,6 +25,12 @@ first pull request.
 - Block updates (moving a tag), force pushes and deletions.
 - Restrict creation to the maintainer.
 
+## Environment `pypi`
+
+- Required reviewer: the maintainer. Self-review allowed.
+- Deployment branches and tags: tags `v*` only.
+- The PyPI project trusts only `release.yml` in this environment.
+
 ## Code security
 
 - Private vulnerability reporting: on.
