@@ -1,7 +1,8 @@
 # Home Assistant development scaffold
 
-`custom_components/doorcheck` is a development preview, not an installable
-HACS release. It provides a native single-instance setup confirmation, setup,
+`custom_components/doorcheck` is the Home Assistant integration. Version 0.1.0a1
+is its first pre-release; [Install the pre-release](install.md) has the HACS
+steps. It provides a native single-instance setup confirmation, setup,
 unload and reload, plus minimal diagnostics and an on-demand read-only custom
 integration inventory and explicit static scans of one selected integration.
 It saves scan results in Home Assistant storage, as described in
@@ -15,17 +16,24 @@ for selection, report contracts and snapshot/work limits.
 
 ## Dependency boundary
 
-The integration manifest requires exactly `doorcheck==0.1.0`. That engine version
-has not been published to PyPI. The isolated test project supplies the local
-engine checkout as an editable dependency satisfying that exact version; it does
-not substitute a package with a similar name or fetch an unreviewed implementation.
-An ordinary HA installation cannot use this checkout's test-source mapping.
+The integration manifest requires exactly `doorcheck==0.1.0a1`, and its own
+version is also `0.1.0a1`. An ordinary HA installation gets that engine from PyPI.
+The isolated test project supplies the local engine checkout as an editable
+dependency satisfying that exact version; it does not substitute a package with a
+similar name or fetch an unreviewed implementation.
 
-The integration's `0.1.0a0` manifest version identifies the development scaffold;
-it is not a published release. Coordinated engine/integration version assignment,
-engine publication, distribution packaging and self-revocation support are still
-needed before a usable integration release. No HACS installation instructions or
-catalog submission are provided for this preview.
+`python -m tools.release check` fails unless the engine version, the HA test
+project's pin and the manifest requirement and version agree, and unless
+`hacs.json` matches the release ZIP and the minimum acceptance image. CI runs it
+on every pull request. A `v*` tag must also equal `v<version>`; the
+[release workflow](../.github/workflows/release.yml) checks that, builds the
+wheel, sdist and integration ZIP once, runs the acceptance suite on that wheel,
+publishes after the maintainer approves the `pypi` environment, creates the
+GitHub pre-release, and installs and scans the published result. To change the
+version, edit those four places, then run `uv lock` in the root and in `ha/`.
+
+Self-revocation is not yet available. No HACS default-catalog submission is
+provided.
 
 Only the library engine is a runtime requirement. Semgrep and other executable
 scanners remain outside the HA host integration. HA testing dependencies live in

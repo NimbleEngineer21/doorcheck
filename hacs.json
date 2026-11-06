@@ -1,0 +1,6 @@
+{
+  "name": "Doorcheck",
+  "zip_release": true,
+  "filename": "doorcheck.zip",
+  "homeassistant": "2025.11.0"
+}

@@ -5,8 +5,9 @@ Python unauthenticated route-to-file-read rule. Default local folder scans make 
 network requests. Repository scans download only an explicit commit or tag from GitHub. Neither
 mode installs dependencies or imports or executes scanned code.
 
-Use Python 3.13.2 or newer on Linux or macOS. The package is not yet published
-to PyPI; run from a checkout with uv 0.13.4 or newer:
+Use Python 3.13.2 or newer on Linux or macOS. Install the pre-release with
+`pip install doorcheck==0.1.0a1` once it is published, or run from a checkout with
+uv 0.13.4 or newer:
 
 ```console
 uv sync --locked

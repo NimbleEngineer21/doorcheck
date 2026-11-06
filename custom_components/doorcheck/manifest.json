@@ -8,7 +8,7 @@
   "integration_type": "service",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/NimbleEngineer21/doorcheck/issues",
-  "requirements": ["doorcheck==0.1.0"],
+  "requirements": ["doorcheck==0.1.0a1"],
   "single_config_entry": true,
-  "version": "0.1.0a0"
+  "version": "0.1.0a1"
 }

@@ -624,9 +624,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=Path("/work"))
     parser.add_argument("--cache", type=Path, default=Path("/work/.benchmark-cache"))
-    parser.add_argument(
-        "--wheel", type=Path, default=Path("/work/dist/doorcheck-0.1.0-py3-none-any.whl")
-    )
+    parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--expected-ha", required=True)
     parser.add_argument("--validation-status", type=int, choices=(400, 500), required=True)
     args = parser.parse_args()

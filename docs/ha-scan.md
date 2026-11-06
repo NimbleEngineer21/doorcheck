@@ -69,9 +69,9 @@ Setup, reload and inventory calls do not start scans. There are no background
 hooks or alerts in this slice. A caller that leaves early does not stop the
 scan; its result is still saved.
 
-This remains a development preview with an unpublished engine requirement.
-Framework tests do not replace real-instance acceptance or distribution and
-self-revocation prerequisites; see [development setup](home-assistant-development.md).
+This is a pre-release; see [Install the pre-release](install.md). Framework tests
+do not replace real-instance acceptance; see
+[development setup](home-assistant-development.md).
 
 The [admin results panel](ha-panel.md) provides a directory picker and explicit
 scan button over this action. It renders findings, capabilities and coverage gaps,

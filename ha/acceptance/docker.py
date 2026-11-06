@@ -9,6 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from tools.corpus import fetch, load
+from tools.release import project_version, wheel_name
 
 from .evidence import validate
 from .fixtures import REFERENCES
@@ -27,6 +28,8 @@ def main() -> int:
     for case, _ in REFERENCES:
         fetch(cases[case], ROOT / ".benchmark-cache")
     image = profile["image"]
+    # The wheel `uv build` writes for this checkout's version.
+    wheel = f"dist/{wheel_name(project_version(ROOT))}"
     subprocess.run(["docker", "pull", image], check=True, stdout=sys.stderr)  # noqa: S603,S607 - fixed executable, digest-pinned image
     name = f"doorcheck-acceptance-{uuid4().hex}"
     command = [
@@ -58,10 +61,7 @@ def main() -> int:
             "dst=/work/ha/custom_components/doorcheck,readonly"
         ),
         "--mount",
-        (
-            f"type=bind,src={ROOT / 'dist/doorcheck-0.1.0-py3-none-any.whl'},"
-            "dst=/work/dist/doorcheck-0.1.0-py3-none-any.whl,readonly"
-        ),
+        f"type=bind,src={ROOT / wheel},dst=/work/{wheel},readonly",
         "--env",
         "PYTHONPATH=/work/ha",
         "--workdir",
@@ -75,6 +75,8 @@ def main() -> int:
         profile["version"],
         "--validation-status",
         str(profile["rest_validation_status"]),
+        "--wheel",
+        f"/work/{wheel}",
     ]
     for case, domain in REFERENCES:
         tree = Path(".benchmark-cache") / case / "custom_components" / domain
