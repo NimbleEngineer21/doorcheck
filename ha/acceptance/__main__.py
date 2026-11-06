@@ -258,6 +258,7 @@ async def restarted(instance: Instance, entry: str, saved: Any, store: Path) -> 
         timeout=aiohttp.ClientTimeout(total=40), trust_env=False
     ) as session:
         require(await saved_results(instance, session) == saved, "results_after_restart")
+        await panel_after_restart(instance, session, saved)
         status, _ = await instance.request(
             session, "DELETE", f"/api/config/config_entries/entry/{entry}"
         )
@@ -310,21 +311,24 @@ async def panel_api(instance: Instance, session: aiohttp.ClientSession) -> None:
         result = await panel_message(
             instance, connection, 3, "doorcheck/panel_scan", directory="dc_acceptance"
         )
-        require(result["success"] and result["result"]["complete"], "panel_scan")
-        finding = result["result"]["findings"][0]
+        require(
+            result["success"] and result["result"]["latest"]["report"]["complete"], "panel_scan"
+        )
+        latest = result["result"]["latest"]
+        finding = latest["report"]["findings"][0]
         require(
             finding["rule"] == "ha-unauth-view-unsanitized-path"
             and "__init__.py:8" in finding["location"],
             "panel_finding",
         )
+        await panel_saved(instance, connection, latest["scan_id"])
     async with session.ws_connect(instance.url + "/api/websocket") as connection:
         await connection.receive_json()
         await connection.send_json({"type": "auth", "access_token": instance.tokens["user"]})
         require((await connection.receive_json())["type"] == "auth_ok", "panel_user_authenticated")
         panels = await panel_message(instance, connection, 1, "get_panels")
         require("doorcheck" not in panels["result"], "panel_hidden_for_user")
-        for number, command in ((2, "inventory"), (3, "scan")):
-            data = {"directory": "dc_acceptance"} if command == "scan" else {}
+        for number, (command, data) in enumerate(PANEL_COMMANDS, start=2):
             denied = await panel_message(
                 instance, connection, number, "doorcheck/panel_" + command, **data
             )
@@ -332,6 +336,52 @@ async def panel_api(instance: Instance, session: aiohttp.ClientSession) -> None:
                 not denied["success"] and denied["error"]["code"] == "unauthorized",
                 "panel_commands_admin_only",
             )
+
+
+PANEL_COMMANDS: tuple[tuple[str, Record], ...] = (
+    ("inventory", {}),
+    ("scan", {"directory": "dc_acceptance"}),
+    ("results", {"directory": "dc_acceptance"}),
+    ("review", {"directory": "dc_acceptance", "scan_id": "0" * 64}),
+    ("clear", {}),
+)
+
+
+async def panel_saved(
+    instance: Instance, connection: aiohttp.ClientWebSocketResponse, scan_id: str
+) -> None:
+    """Open, review and clear through the panel; the main scans run after this."""
+    data = {"directory": "dc_acceptance"}
+    opened = await panel_message(instance, connection, 4, "doorcheck/panel_results", **data)
+    require(
+        opened["success"] and opened["result"]["latest"]["scan_id"] == scan_id,
+        "panel_saved_result",
+    )
+    reviewed = await panel_message(
+        instance, connection, 5, "doorcheck/panel_review", scan_id=scan_id, **data
+    )
+    require(reviewed["success"] and reviewed["result"]["reviewed"], "panel_review")
+    cleared = await panel_message(instance, connection, 6, "doorcheck/panel_clear")
+    after = await panel_message(instance, connection, 7, "doorcheck/panel_results", **data)
+    require(
+        cleared["success"] and after["success"] and after["result"]["latest"] is None,
+        "panel_clear",
+    )
+
+
+async def panel_after_restart(
+    instance: Instance, session: aiohttp.ClientSession, saved: Any
+) -> None:
+    async with session.ws_connect(instance.url + "/api/websocket") as connection:
+        await authenticated_socket(instance, connection)
+        opened = await panel_message(
+            instance, connection, 1, "doorcheck/panel_results", directory="dc_acceptance"
+        )
+        require(
+            opened["success"]
+            and opened["result"]["latest"]["scan_id"] == saved["latest"]["scan_id"],
+            "panel_saved_after_restart",
+        )
 
 
 async def panel_removed(instance: Instance, session: aiohttp.ClientSession) -> None:

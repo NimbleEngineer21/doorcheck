@@ -31,9 +31,19 @@ These files are hashed and saved apart from the source files, and they are not
 part of `artifact_sha256`. Leaving them in would report a change after every
 first load; dropping them would hide a planted `.pyc` file, which Python can
 load in place of its source. Other files in a `__pycache__` folder count as
-source. Bytecode files are still scanned: the capability reader reports each
-`.pyc` file as a shipped binary, so a scan after first load can list
-capabilities that a fresh copy does not.
+source. Bytecode files are read, hashed and counted toward the snapshot limits,
+but they are not copied into the private copy that the engine scans, so they
+never appear as capabilities. A scan after first load lists the same
+capabilities as a fresh copy. The saved bytecode paths and hashes show them
+instead: each saved scan lists its bytecode paths, and the comparison lists
+bytecode files that were added, removed or changed. A `.pyc` file outside a
+`__pycache__` folder, which Python can import without its source, is still
+scanned and reported as a shipped binary.
+
+A reviewed scan saved by an earlier development build can list
+`__pycache__/*.pyc` files as shipped-binary capabilities. Its first comparison
+with a newer scan shows them as capabilities no longer found. Mark the newer
+scan reviewed, or clear saved results, to start from the current behavior.
 
 A manifest version and a digest are declarations about the files that were
 copied. They do not establish where the files came from; origin stays `unknown`.
@@ -106,8 +116,18 @@ send it again to the reloaded entry.
   "saving": "on",
   "saved": true,
   "problems": [],
-  "latest": {"scan_id": "<64 hex>", "scanned_at": "2026-11-05T14:02:11+00:00", "report": {}},
-  "baseline": {"scan_id": "<64 hex>", "scanned_at": "2026-11-01T09:30:00+00:00", "report": {}},
+  "latest": {
+    "scan_id": "<64 hex>",
+    "scanned_at": "2026-11-05T14:02:11+00:00",
+    "bytecode": ["__pycache__/code.cpython-314.pyc"],
+    "report": {}
+  },
+  "baseline": {
+    "scan_id": "<64 hex>",
+    "scanned_at": "2026-11-01T09:30:00+00:00",
+    "bytecode": [],
+    "report": {}
+  },
   "comparison": {
     "limits": [],
     "same_artifact": false,
@@ -122,6 +142,8 @@ send it again to the reloaded entry.
 - `saved` says whether this exact latest result is in the store.
 - `baseline` is the reviewed scan from the store, or `null` when the store has
   none. A result that is not saved never shows itself as the reviewed scan.
+- `bytecode` lists the sorted paths of the interpreter bytecode files in each
+  scan. Their hashes are saved but not returned.
 - `comparison` uses the engine's [comparability limits](comparison.md#comparability-limits)
   between the reviewed and latest reports, and lists file paths whose hashes
   were added, removed or changed. It is `null` without a reviewed scan.

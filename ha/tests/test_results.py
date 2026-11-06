@@ -595,6 +595,10 @@ async def test_a_rescan_that_only_adds_bytecode_cannot_be_reviewed_with_the_old_
     assert target["artifact_sha256"] == first["latest"]["report"]["target"]["artifact_sha256"]
     assert second["latest"]["scan_id"] != first["latest"]["scan_id"]
     assert second["baseline"]["scan_id"] == first["latest"]["scan_id"]
+    # Bytecode is never a capability; the saved paths are what show it.
+    assert second["latest"]["report"]["capabilities"] == first["latest"]["report"]["capabilities"]
+    assert second["latest"]["bytecode"] == ["__pycache__/code.cpython-314.pyc"]
+    assert second["baseline"]["bytecode"] == []
     with pytest.raises(ServiceValidationError) as refused:
         await call(hass, "mark_reviewed", directory="example", scan_id=first["latest"]["scan_id"])
     assert refused.value.translation_key == "results_stale"

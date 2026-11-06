@@ -8,10 +8,10 @@ from doorcheck.capabilities.model import Capability, Kind
 from doorcheck.checks import Check, Problem, Status
 from doorcheck.findings import Confidence, Finding, Location, Severity
 from doorcheck.messages import ENGLISH, render
-from doorcheck.report import Report, Target, to_dict
+from doorcheck.report import Report, Target, from_dict, to_dict
 from homeassistant.components.frontend import DATA_PANELS
 
-from custom_components.doorcheck import panel
+from custom_components.doorcheck import panel, results, scan, services
 from tests.test_inventory_service import loaded
 
 
@@ -39,10 +39,14 @@ def response(checks=None, evidence="<img src=x onerror=alert(1)>\u202e", capabil
     }
 
 
+def report_view(data):
+    return panel.report_data(from_dict(data["report"]))
+
+
 def test_shared_configuration_and_shadow_tokens() -> None:
     config = panel.configuration()
     expected = {
-        key.removeprefix("ha.panel."): value
+        key.rpartition(".")[2]: value
         for key, value in ENGLISH.items()
         if key.startswith("ha.panel.") and key != "ha.panel.confidence"
     }
@@ -51,6 +55,7 @@ def test_shared_configuration_and_shadow_tokens() -> None:
             "scan_busy": render("ha.service.scan_busy"),
             "scan_invalid_directory": render("ha.service.scan_invalid_directory"),
             "inventory_not_configured": render("ha.service.not_configured"),
+            **{key.rpartition(".")[2]: render(key) for key in panel.REVIEW_ERRORS},
         }
     )
     assert config["messages"] == expected
@@ -102,35 +107,82 @@ async def test_native_inventory_scan_and_loaded_gate(hass, hass_ws_client, tmp_p
     await client.send_json({"id": 2, "type": "doorcheck/panel_scan", "directory": "example"})
     result = await client.receive_json()
     assert result["success"] is True
-    assert result["result"]["target"] == "example"
-    assert result["result"]["complete"] is True
-    assert result["result"]["findings"] == []
-    assert result["result"]["capabilities"][0]["message"]
+    first = result["result"]["latest"]
+    assert first["report"]["target"] == "example"
+    assert first["report"]["complete"] is True
+    assert first["report"]["findings"] == []
+    assert first["report"]["capabilities"][0]["message"]
+    assert result["result"]["reviewed"] is True
+    assert result["result"]["comparison"] is None
+    (folder / "__pycache__").mkdir()
+    (folder / "__pycache__/__init__.cpython-314.pyc").write_bytes(b"compiled")
+    (folder / "extra.py").write_text("import subprocess\nsubprocess.run(['x'])")
+    await client.send_json({"id": 3, "type": "doorcheck/panel_scan", "directory": "example"})
+    second = (await client.receive_json())["result"]
+    assert second["reviewed"] is False
+    assert second["reviewable"] is True
+    assert second["latest"]["bytecode"] == ["__pycache__/__init__.cpython-314.pyc"]
+    assert second["comparison"]["changed"] is True
+    assert second["comparison"]["files"]["added"] == ["extra.py"]
+    assert second["comparison"]["bytecode"]["added"] == ["__pycache__/__init__.cpython-314.pyc"]
+    capabilities = second["latest"]["report"]["capabilities"]
+    added = {capabilities[i]["location"] for i in second["comparison"]["added"]["capabilities"]}
+    assert added == {"extra.py:1:1", "extra.py:2:1"}
+    # Opening the saved result reads the store and never scans again.
+    with patch.object(scan, "scan_integration", side_effect=AssertionError("scanned")):
+        await client.send_json({"id": 4, "type": "doorcheck/panel_results", "directory": "example"})
+        assert (await client.receive_json())["result"] == second
+    await client.send_json(
+        {
+            "id": 5,
+            "type": "doorcheck/panel_review",
+            "directory": "example",
+            "scan_id": first["scan_id"],
+        }
+    )
+    stale = await client.receive_json()
+    assert stale["error"]["translation_key"] == "results_stale"
+    await client.send_json(
+        {
+            "id": 6,
+            "type": "doorcheck/panel_review",
+            "directory": "example",
+            "scan_id": second["latest"]["scan_id"],
+        }
+    )
+    reviewed = (await client.receive_json())["result"]
+    assert reviewed["reviewed"] is True
+    assert reviewed["baseline"]["scan_id"] == second["latest"]["scan_id"]
+    await client.send_json({"id": 7, "type": "doorcheck/panel_clear"})
+    assert (await client.receive_json())["result"] == {"cleared": True}
+    await client.send_json({"id": 8, "type": "doorcheck/panel_results", "directory": "example"})
+    assert (await client.receive_json())["result"] == {"problems": [], "latest": None}
     await hass.config_entries.async_unload(entry.entry_id)
-    for number, command in ((3, "inventory"), (4, "scan")):
-        message = {"id": number, "type": "doorcheck/panel_" + command}
-        if command == "scan":
-            message["directory"] = "example"
-        await client.send_json(message)
+    for number, command in enumerate(COMMANDS, start=9):
+        await client.send_json({"id": number, **command})
         error = await client.receive_json()
         assert error["success"] is False
         assert error["error"]["translation_key"] == "inventory_not_configured"
 
 
-@pytest.mark.parametrize("command", ["inventory", "scan"])
+COMMANDS = [
+    {"type": "doorcheck/panel_inventory"},
+    {"type": "doorcheck/panel_scan", "directory": "example"},
+    {"type": "doorcheck/panel_results", "directory": "example"},
+    {"type": "doorcheck/panel_review", "directory": "example", "scan_id": "0" * 64},
+    {"type": "doorcheck/panel_clear"},
+]
+
+
+@pytest.mark.parametrize("command", COMMANDS, ids=lambda c: c["type"])
 async def test_non_admin_rejected_before_any_io(
     hass, hass_ws_client, hass_read_only_access_token, command
 ) -> None:
     await loaded(hass)
     client = await hass_ws_client(hass, access_token=hass_read_only_access_token)
-    with patch.object(panel, "call", side_effect=AssertionError("unauthorized I/O")):
-        await client.send_json(
-            {
-                "id": 1,
-                "type": "doorcheck/panel_" + command,
-                **({"directory": "example"} if command == "scan" else {}),
-            }
-        )
+    unauthorized = AssertionError("unauthorized I/O")
+    with patch("homeassistant.core.ServiceRegistry.async_call", side_effect=unauthorized):
+        await client.send_json({"id": 1, **command})
         error = await client.receive_json()
     assert error["success"] is False
     assert error["error"]["code"] == "unauthorized"
@@ -138,15 +190,27 @@ async def test_non_admin_rejected_before_any_io(
 
 @pytest.mark.parametrize(
     "data",
-    [{}, {"directory": "../outside"}, {"directory": 1}, {"directory": "example", "extra": True}],
+    [
+        {"type": "doorcheck/panel_scan"},
+        {"type": "doorcheck/panel_scan", "directory": "../outside"},
+        {"type": "doorcheck/panel_scan", "directory": 1},
+        {"type": "doorcheck/panel_scan", "directory": "example", "extra": True},
+        {"type": "doorcheck/panel_results", "directory": "../outside"},
+        {"type": "doorcheck/panel_results", "directory": "example", "extra": True},
+        {"type": "doorcheck/panel_review", "directory": "example"},
+        {"type": "doorcheck/panel_review", "directory": "example", "scan_id": 1},
+        {"type": "doorcheck/panel_review", "directory": "example", "scan_id": "<script>"},
+        {"type": "doorcheck/panel_clear", "extra": True},
+    ],
 )
 async def test_scan_validation_preserved(hass, hass_ws_client, data) -> None:
     await loaded(hass)
     client = await hass_ws_client(hass)
-    await client.send_json({"id": 1, "type": "doorcheck/panel_scan", **data})
+    await client.send_json({"id": 1, **data})
     error = await client.receive_json()
     assert error["success"] is False
     assert error["error"]["code"] in {"invalid_format", "home_assistant_error"}
+    assert "<script>" not in str(error)
 
 
 async def test_rendering_runs_off_loop_and_keeps_user_context(
@@ -183,7 +247,7 @@ def test_report_view_keeps_coverage_evidence_and_locations() -> None:
         Status.PARTIAL,
         (Problem("problem.file_not_parsed", loc), Problem("problem.scan_limit_reached")),
     )
-    view = panel.report_view(
+    view = report_view(
         response((check,), capabilities=(Capability(Kind.PROCESS, loc, "command\u202e"),))
     )
     assert view["complete"] is False
@@ -208,8 +272,8 @@ def test_report_view_keeps_coverage_evidence_and_locations() -> None:
     assert finding["location"] == "code.py:8:1"
     assert "⟨U+202E⟩" in view["capabilities"][0]["message"]
     assert view["capabilities"][0]["location"] == "broken.py:2:1"
-    assert panel.report_view(response(()))["complete"] is False
-    assert panel.report_view(response(evidence=None))["findings"][0]["evidence"] == ""
+    assert report_view(response(()))["complete"] is False
+    assert report_view(response(evidence=None))["findings"][0]["evidence"] == ""
 
 
 def test_inventory_view_preserves_gaps_and_fallback_name() -> None:
@@ -322,5 +386,238 @@ def test_parameterized_findings_and_problems_preserve_safe_values() -> None:
     assert panel.finding_view(finding)["message"] == "The scanner reported: value⟨U+202E⟩"
     problem = Problem("problem.file_path_not_supported", params={"path": "name\u202e"})
     checks = (Check("python-rules", "0.1.0", Status.PARTIAL, (problem,)),)
-    view = panel.report_view(response(checks))
+    view = report_view(response(checks))
     assert "name⟨U+202E⟩" in view["checks"][0]["problems"][0]["message"]
+
+
+def saved_record(report: Report, files=None, bytecode=None, at="2026-11-06T10:00:00+00:00"):
+    return results.Saved(at, report, files or {}, bytecode or {})
+
+
+def results_view(latest, baseline=None, saving="on", saved=True, problems=()):
+    return {
+        "results": {
+            "directory": "example",
+            "saving": saving,
+            "saved": saved,
+            "problems": list(problems),
+            "latest": services._record(latest),
+            "baseline": None if baseline is None else services._record(baseline),
+            "comparison": None if baseline is None else services._comparison(baseline, latest),
+        }
+    }
+
+
+def report(version="0.1.0", status=Status.COMPLETE, capabilities=(), findings=()):
+    gaps = () if status is Status.COMPLETE else (Problem("problem.scan_limit_reached"),)
+    checks = (Check("capabilities", version, status, gaps),)
+    return Report(version, Target("example"), checks, capabilities, findings)
+
+
+PROCESS = Capability(Kind.PROCESS, Location("code.py", 2, 1), "command")
+FINDING = Finding(
+    "test-rule",
+    Severity.REVIEW,
+    Confidence.HIGH,
+    Location("code.py", 8, 1),
+    "finding.unauth_file_path",
+    tool="builtin",
+)
+
+
+def test_saved_view_without_saved_result_keeps_store_problems() -> None:
+    view = panel.saved_view({"problems": ["problem.ha_results_entry_invalid"], "results": None})
+    assert view == {"problems": [render("problem.ha_results_entry_invalid")], "latest": None}
+
+
+def test_saved_view_reviewed_scan_has_no_comparison() -> None:
+    first = saved_record(report(capabilities=(PROCESS,)), bytecode={"__pycache__/a‮.pyc": "0" * 64})
+    view = panel.saved_view(results_view(first, first))
+    assert view["reviewed"] is True
+    assert view["reviewable"] is False
+    assert view["comparison"] is None
+    assert view["saving"] == "on"
+    assert view["saved"] is True
+    assert view["latest"]["bytecode"] == ["__pycache__/a⟨U+202E⟩.pyc"]
+    assert view["latest"]["scanned_at"] == "2026-11-06T10:00:00+00:00"
+    assert view["latest"]["scan_id"] == results.scan_id(first)
+    assert view["latest"]["report"] == report_view({"report": to_dict(first.report)})
+    assert view["baseline"] == {
+        "scan_id": results.scan_id(first),
+        "scanned_at": "2026-11-06T10:00:00+00:00",
+    }
+
+
+def test_saved_view_lists_changes_since_the_reviewed_scan() -> None:
+    baseline = saved_record(
+        report(capabilities=(PROCESS,)), {"code.py": "0" * 64, "gone‮.py": "1" * 64}
+    )
+    latest = saved_record(
+        report(findings=(FINDING,)),
+        {"code.py": "2" * 64, "new.py": "3" * 64},
+        {"__pycache__/code.pyc": "4" * 64},
+        at="2026-11-07T10:00:00+00:00",
+    )
+    view = panel.saved_view(results_view(latest, baseline))
+    assert view["reviewed"] is False
+    assert view["reviewable"] is True
+    comparison = view["comparison"]
+    assert comparison["changed"] is True
+    assert comparison["limits"] == []
+    assert comparison["rules_changed"] is False
+    assert comparison["unproven"] is False
+    assert comparison["added"] == {"findings": [0], "capabilities": []}
+    assert comparison["removed"] == {
+        "findings": [],
+        "capabilities": [panel.capability_view(PROCESS)],
+    }
+    assert comparison["files"] == {
+        "added": ["new.py"],
+        "removed": ["gone⟨U+202E⟩.py"],
+        "changed": ["code.py"],
+    }
+    assert comparison["bytecode"] == {
+        "added": ["__pycache__/code.pyc"],
+        "removed": [],
+        "changed": [],
+    }
+
+
+@pytest.mark.parametrize(
+    ("change", "kind"),
+    [
+        ({"files": {"a.py": "1" * 64}}, "files"),
+        ({"bytecode": {"__pycache__/a.pyc": "1" * 64}}, "bytecode"),
+        ({"capabilities": (PROCESS,)}, "added"),
+        (None, "removed"),
+    ],
+)
+def test_any_single_difference_is_a_change(change, kind) -> None:
+    baseline = saved_record(report(capabilities=() if change else (PROCESS,)), {})
+    files = (change or {}).get("files", {})
+    bytecode = (change or {}).get("bytecode", {})
+    capabilities = (change or {}).get("capabilities", ())
+    latest = saved_record(
+        report(capabilities=capabilities), files, bytecode, at="2026-11-07T00:00:00+00:00"
+    )
+    comparison = panel.saved_view(results_view(latest, baseline))["comparison"]
+    assert comparison["changed"] is True
+    assert comparison["limits"] == []
+
+
+def test_same_files_and_observations_are_unchanged() -> None:
+    baseline = saved_record(report(capabilities=(PROCESS,)), {"code.py": "0" * 64})
+    latest = saved_record(
+        report(capabilities=(PROCESS,)), {"code.py": "0" * 64}, at="2026-11-07T00:00:00+00:00"
+    )
+    comparison = panel.saved_view(results_view(latest, baseline))["comparison"]
+    assert comparison["changed"] is False
+
+
+def test_incomplete_latest_scan_marks_removals_unproven_and_cannot_be_reviewed() -> None:
+    baseline = saved_record(report(capabilities=(PROCESS,)))
+    latest = saved_record(report(status=Status.PARTIAL), at="2026-11-07T00:00:00+00:00")
+    view = panel.saved_view(results_view(latest, baseline))
+    assert view["reviewable"] is False
+    comparison = view["comparison"]
+    assert comparison["unproven"] is True
+    assert comparison["rules_changed"] is False
+    assert comparison["changed"] is True
+    assert comparison["limits"] == [render("comparison.after_incomplete")]
+
+
+def test_changed_rules_are_labeled() -> None:
+    baseline = saved_record(report())
+    latest = saved_record(report(version="0.2.0"), at="2026-11-07T00:00:00+00:00")
+    comparison = panel.saved_view(results_view(latest, baseline))["comparison"]
+    assert comparison["rules_changed"] is True
+    assert comparison["unproven"] is False
+    assert comparison["changed"] is True
+    assert render("comparison.engine_version") in comparison["limits"]
+    assert render("comparison.checks") in comparison["limits"]
+
+
+def test_only_check_versions_changed_is_a_rules_change() -> None:
+    baseline = saved_record(report())
+    changed = Report(
+        "0.1.0", Target("example"), (Check("capabilities", "0.2.0", Status.COMPLETE),), (), ()
+    )
+    latest = saved_record(changed, at="2026-11-07T00:00:00+00:00")
+    comparison = panel.saved_view(results_view(latest, baseline))["comparison"]
+    assert comparison["limits"] == [render("comparison.checks")]
+    assert comparison["rules_changed"] is True
+
+
+@pytest.mark.parametrize(
+    ("saving", "saved"), [("disabled", False), ("unloaded", False), ("on", False)]
+)
+def test_an_unsaved_or_unsaving_result_cannot_be_reviewed(saving, saved) -> None:
+    baseline = saved_record(report())
+    latest = saved_record(report(capabilities=(PROCESS,)), at="2026-11-07T00:00:00+00:00")
+    view = panel.saved_view(results_view(latest, baseline, saving=saving, saved=saved))
+    assert view["reviewable"] is False
+    assert view["saving"] == saving
+
+
+def test_saving_on_but_store_unwritable_is_not_reviewable() -> None:
+    baseline = saved_record(report())
+    latest = saved_record(report(capabilities=(PROCESS,)), at="2026-11-07T00:00:00+00:00")
+    unavailable = "problem.ha_results_unavailable"
+    view = panel.saved_view(results_view(latest, baseline, saving=unavailable, saved=True))
+    assert view["reviewable"] is False
+
+
+def test_no_baseline_and_problems_are_rendered() -> None:
+    latest = saved_record(report(status=Status.PARTIAL))
+    view = panel.saved_view(results_view(latest, saved=True, problems=["problem.ha_results_limit"]))
+    assert view["baseline"] is None
+    assert view["comparison"] is None
+    assert view["reviewed"] is False
+    assert view["reviewable"] is False
+    assert view["problems"] == [render("problem.ha_results_limit")]
+
+
+async def test_saved_view_runs_off_loop(hass, hass_ws_client) -> None:
+    await loaded(hass)
+    client = await hass_ws_client(hass)
+    original = panel.saved_view
+
+    async def service(*args, **kwargs):
+        return {"scope": "saved_results", "problems": [], "results": None}
+
+    def view(data):
+        with pytest.raises(RuntimeError, match="no running event loop"):
+            asyncio.get_running_loop()
+        return original(data)
+
+    with (
+        patch("homeassistant.core.ServiceRegistry.async_call", new=service),
+        patch.object(panel, "saved_view", new=view),
+    ):
+        for number, command in enumerate(COMMANDS[1:4], start=1):
+            await client.send_json({"id": number, **command})
+            assert (await client.receive_json())["result"] == {"problems": [], "latest": None}
+
+
+def test_a_finding_no_longer_found_is_listed_as_removed() -> None:
+    baseline = saved_record(report(findings=(FINDING,)))
+    latest = saved_record(report(), at="2026-11-07T00:00:00+00:00")
+    comparison = panel.saved_view(results_view(latest, baseline))["comparison"]
+    assert comparison["removed"]["findings"] == [panel.finding_view(FINDING)]
+    assert comparison["added"]["findings"] == []
+
+
+def test_added_items_are_positions_in_the_latest_report() -> None:
+    other = Capability(Kind.PROCESS, Location("other.py", 1, 1), "other")
+    baseline = saved_record(report(capabilities=(PROCESS,)))
+    latest = saved_record(
+        report(capabilities=(PROCESS, other, other)), at="2026-11-07T00:00:00+00:00"
+    )
+    view = panel.saved_view(results_view(latest, baseline))
+    # Equal duplicates keep distinct positions; the item itself is sent once.
+    assert view["comparison"]["added"]["capabilities"] == [1, 2]
+    assert [c["location"] for c in view["latest"]["report"]["capabilities"]] == [
+        "code.py:2:1",
+        "other.py:1:1",
+        "other.py:1:1",
+    ]

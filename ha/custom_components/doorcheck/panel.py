@@ -13,14 +13,63 @@ from homeassistant.components.websocket_api.decorators import (
 )
 from homeassistant.core import HomeAssistant
 
+from doorcheck.capabilities import Capability
+from doorcheck.comparison import Limit, compare
 from doorcheck.findings import Finding, Location
 from doorcheck.messages import ENGLISH, render, render_capability
-from doorcheck.report import from_dict
+from doorcheck.report import Report, from_dict
 from doorcheck.text import display_safe
 
 from .const import DOMAIN
+from .results import complete
 
 URL = "/doorcheck_static"
+REVIEW_ERRORS = (
+    "ha.service.results_incomplete",
+    "ha.service.results_not_found",
+    "ha.service.results_not_saving",
+    "ha.service.results_stale",
+    "ha.service.results_write_failed",
+)
+SAVED_MESSAGES = (
+    "ha.panel.added_capabilities",
+    "ha.panel.added_findings",
+    "ha.panel.bytecode",
+    "ha.panel.bytecode_added",
+    "ha.panel.bytecode_changed",
+    "ha.panel.bytecode_note",
+    "ha.panel.bytecode_removed",
+    "ha.panel.cancel",
+    "ha.panel.changed",
+    "ha.panel.changes",
+    "ha.panel.clear",
+    "ha.panel.clear_confirm",
+    "ha.panel.clear_detail",
+    "ha.panel.clear_title",
+    "ha.panel.cleared",
+    "ha.panel.clearing",
+    "ha.panel.files_added",
+    "ha.panel.files_changed",
+    "ha.panel.files_note",
+    "ha.panel.files_removed",
+    "ha.panel.full_results",
+    "ha.panel.latest_scan",
+    "ha.panel.no_baseline",
+    "ha.panel.no_saved",
+    "ha.panel.opening",
+    "ha.panel.removed_capabilities",
+    "ha.panel.removed_findings",
+    "ha.panel.review",
+    "ha.panel.review_detail",
+    "ha.panel.reviewed",
+    "ha.panel.reviewed_scan",
+    "ha.panel.reviewing",
+    "ha.panel.rules_changed",
+    "ha.panel.saving_disabled",
+    "ha.panel.saving_unloaded",
+    "ha.panel.unchanged",
+    "ha.panel.unproven",
+)
 
 
 def configuration() -> dict[str, Any]:
@@ -51,6 +100,8 @@ def configuration() -> dict[str, Any]:
         "inventory_not_configured": render("ha.service.not_configured"),
         "more": render("ha.panel.more"),
         "menu": render("ha.panel.menu"),
+        **{key.rpartition(".")[2]: render(key) for key in SAVED_MESSAGES},
+        **{key.rpartition(".")[2]: render(key) for key in REVIEW_ERRORS},
     }
     css = files("doorcheck.presentation").joinpath("tokens.css").read_text()
     css = css.replace(":root", ":host").replace('[data-theme="', ':host([data-theme="')
@@ -65,8 +116,8 @@ async def register(hass: HomeAssistant) -> None:
     await hass.http.async_register_static_paths(
         [static_path(URL, str(Path(__file__).parent / "frontend"), False)]
     )
-    websocket_api.async_register_command(hass, inventory)
-    websocket_api.async_register_command(hass, scan)
+    for command in (inventory, scan, saved, review, clear):
+        websocket_api.async_register_command(hass, command)
 
 
 async def setup(hass: HomeAssistant) -> None:
@@ -102,6 +153,11 @@ async def call(
     return response
 
 
+def fields(msg: dict[str, Any]) -> dict[str, Any]:
+    """Pass every sent field on, so the action's own validation rejects extras."""
+    return {key: value for key, value in msg.items() if key not in {"id", "type"}}
+
+
 @websocket_command({"type": "doorcheck/panel_inventory"})
 @require_admin
 @async_response
@@ -114,9 +170,34 @@ async def inventory(hass: HomeAssistant, connection: ActiveConnection, msg: dict
 @require_admin
 @async_response
 async def scan(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
-    data = {key: value for key, value in msg.items() if key not in {"id", "type"}}
-    result = await call(hass, connection, msg, "scan_integration", data)
-    connection.send_result(msg["id"], await hass.async_add_executor_job(report_view, result))
+    result = await call(hass, connection, msg, "scan_integration", fields(msg))
+    connection.send_result(msg["id"], await hass.async_add_executor_job(saved_view, result))
+
+
+@websocket_command({"type": "doorcheck/panel_results", "directory": str})
+@require_admin
+@async_response
+async def saved(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
+    result = await call(hass, connection, msg, "get_results", fields(msg))
+    connection.send_result(msg["id"], await hass.async_add_executor_job(saved_view, result))
+
+
+@websocket_command({"type": "doorcheck/panel_review", "directory": str, "scan_id": str})
+@require_admin
+@async_response
+async def review(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
+    result = await call(hass, connection, msg, "mark_reviewed", fields(msg))
+    connection.send_result(msg["id"], await hass.async_add_executor_job(saved_view, result))
+
+
+@websocket_command({"type": "doorcheck/panel_clear"})
+@require_admin
+@async_response
+async def clear(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
+    await hass.services.async_call(
+        DOMAIN, "clear_results", fields(msg), blocking=True, context=connection.context(msg)
+    )
+    connection.send_result(msg["id"], {"cleared": True})
 
 
 def inventory_view(result: dict[str, Any]) -> dict[str, Any]:
@@ -141,12 +222,10 @@ def location(value: Location) -> str:
     return display_safe(":".join(parts))
 
 
-def report_view(result: dict[str, Any]) -> dict[str, Any]:
-    report = from_dict(result["report"])
+def report_data(report: Report) -> dict[str, Any]:
     return {
         "target": display_safe(report.target.name),
-        "complete": bool(report.checks)
-        and all(c.status.value == "complete" for c in report.checks),
+        "complete": complete(report),
         "checks": [
             {
                 "name": display_safe(c.name),
@@ -162,10 +241,7 @@ def report_view(result: dict[str, Any]) -> dict[str, Any]:
             for c in report.checks
         ],
         "findings": [finding_view(f) for f in report.findings],
-        "capabilities": [
-            {"message": render_capability(c), "location": location(c.location)}
-            for c in report.capabilities
-        ],
+        "capabilities": [capability_view(c) for c in report.capabilities],
     }
 
 
@@ -183,3 +259,85 @@ def finding_view(finding: Finding) -> dict[str, Any]:
         "confidence": render("ha.panel.confidence", {"value": finding.confidence.value}),
         "evidence": display_safe(finding.evidence or ""),
     }
+
+
+def capability_view(capability: Capability) -> dict[str, Any]:
+    return {"message": render_capability(capability), "location": location(capability.location)}
+
+
+def paths(values: list[str]) -> list[str]:
+    return [display_safe(value) for value in values]
+
+
+def changes(data: dict[str, list[str]]) -> dict[str, list[str]]:
+    return {kind: paths(data[kind]) for kind in ("added", "removed", "changed")}
+
+
+def positions(items: tuple[object, ...], chosen: tuple[object, ...]) -> list[int]:
+    index = {id(item): number for number, item in enumerate(items)}
+    return [index[id(item)] for item in chosen]
+
+
+def comparison_view(baseline: Report, latest: Report, data: dict[str, Any]) -> dict[str, Any]:
+    compared = compare(baseline, latest)
+    limits = set(data["limits"])
+    # Added items are already in the latest report; send their positions, not copies.
+    added = {
+        "findings": positions(latest.findings, compared.findings.added),
+        "capabilities": positions(latest.capabilities, compared.capabilities.added),
+    }
+    removed = {
+        "findings": [finding_view(f) for f in compared.findings.removed],
+        "capabilities": [capability_view(c) for c in compared.capabilities.removed],
+    }
+    files, bytecode = changes(data["files"]), changes(data["bytecode"])
+    lists = [*added.values(), *removed.values(), *files.values(), *bytecode.values()]
+    return {
+        "changed": bool(limits) or any(lists),
+        "limits": [render("comparison." + limit) for limit in data["limits"]],
+        "rules_changed": bool(limits & {Limit.ENGINE_VERSION, Limit.CHECKS}),
+        # A removal is proven only when the latest scan covered everything.
+        "unproven": Limit.AFTER_INCOMPLETE in limits,
+        "added": added,
+        "removed": removed,
+        "files": files,
+        "bytecode": bytecode,
+    }
+
+
+def saved_view(result: dict[str, Any]) -> dict[str, Any]:
+    """One shape for a scan, a saved read and a review: the comparison first."""
+    results = result["results"]
+    problems = results["problems"] if results else result["problems"]
+    view: dict[str, Any] = {"problems": [render(key) for key in problems], "latest": None}
+    if results is None:
+        return view
+    latest, baseline = results["latest"], results["baseline"]
+    latest_report = from_dict(latest["report"])
+    reviewed = baseline is not None and baseline["scan_id"] == latest["scan_id"]
+    view.update(
+        {
+            "saving": results["saving"],
+            "saved": results["saved"],
+            "latest": {
+                "scan_id": latest["scan_id"],
+                "scanned_at": latest["scanned_at"],
+                "bytecode": paths(latest["bytecode"]),
+                "report": report_data(latest_report),
+            },
+            "baseline": None
+            if baseline is None
+            else {"scan_id": baseline["scan_id"], "scanned_at": baseline["scanned_at"]},
+            "reviewed": reviewed,
+            "reviewable": results["saved"]
+            and results["saving"] == "on"
+            and not reviewed
+            and complete(latest_report),
+            "comparison": None
+            if baseline is None or reviewed
+            else comparison_view(
+                from_dict(baseline["report"]), latest_report, results["comparison"]
+            ),
+        }
+    )
+    return view

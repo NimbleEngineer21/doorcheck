@@ -362,6 +362,39 @@ def test_bytecode_is_recorded_apart_from_the_source_digest(tmp_path: Path) -> No
     assert after_load.files == clean.files
 
 
+def test_bytecode_is_hashed_but_never_scanned(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    (selected / "code.py").write_text("VALUE = 1\n")
+    (selected / "loose.pyc").write_bytes(b"sourceless")
+    clean = scan.scan_integration(root, "example").report
+    cache = selected / "pkg/__pycache__"
+    cache.mkdir(parents=True)
+    (cache / "code.cpython-314.pyc").write_bytes(b"\x7fELF compiled")
+    (cache / "notes.txt").write_text("not bytecode")
+    loaded = scan.scan_integration(root, "example")
+    # Only the loose .pyc is reported; the interpreter cache is shown by its hashes.
+    assert [(c.kind.value, c.location.path) for c in loaded.report.capabilities] == [
+        ("shipped_binary", "loose.pyc")
+    ]
+    assert loaded.report.capabilities == clean.capabilities
+    assert loaded.report.checks == clean.checks
+    assert set(loaded.bytecode) == {"pkg/__pycache__/code.cpython-314.pyc"}
+    assert "pkg/__pycache__/notes.txt" in loaded.files
+
+
+def test_bytecode_counts_toward_snapshot_limits(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    cache = selected / "__pycache__"
+    cache.mkdir()
+    (cache / "a.pyc").write_bytes(b"1234")
+    with patch.object(scan, "MAX_ENTRIES", 2), patch.object(scan, "MAX_BYTES", 4):
+        assert scan.scan_integration(root, "example").bytecode
+        (cache / "b.pyc").write_bytes(b"5")
+        failed(root)
+    with patch.object(scan, "MAX_FILE_BYTES", 3):
+        failed(root)
+
+
 @pytest.mark.parametrize(
     ("relative", "expected"),
     [

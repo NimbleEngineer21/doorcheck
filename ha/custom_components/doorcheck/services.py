@@ -169,6 +169,8 @@ def _record(saved: Saved) -> dict[str, Any]:
         "scan_id": scan_id(saved),
         "scanned_at": saved.scanned_at,
         "report": to_dict(saved.report),
+        # The capability list leaves interpreter bytecode out; these paths show it.
+        "bytecode": sorted(saved.bytecode),
     }
 
 

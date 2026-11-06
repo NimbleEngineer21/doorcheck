@@ -72,8 +72,11 @@ def _file(parent: int, name: str, destination: Path, budget: Budget, relative: s
         after.st_ctime_ns,
     ):
         raise SnapshotError
-    destination.write_bytes(data)
     budget.hashes[relative] = hashlib.sha256(data).hexdigest()
+    # Interpreter-written bytecode is read, capped and hashed, but kept out of the
+    # private copy: the engine never reports it. Its saved hashes show it instead.
+    if not is_bytecode(relative):
+        destination.write_bytes(data)
 
 
 def _copy(parent: int, destination: Path, budget: Budget, depth: int = 0, prefix: str = "") -> None:
