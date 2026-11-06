@@ -54,8 +54,10 @@ with unknown manifest fields represented as null. Directory labels make hidden
 controls and invalid Unicode visible. Declared names and versions remain JSON
 data; consumers must apply appropriate display/HTML escaping when rendering them.
 No absolute configuration paths, other manifest fields or raw exception messages
-are included. Diagnostics continue to expose only the engine version and scanning
-availability, without adding inventory names or configuration data.
+are included. Diagnostics expose only the engine version, scanning availability
+and saved-result counts, without adding inventory names or configuration data.
+An inventory with status `complete` also makes Doorcheck forget
+[saved results](ha-baselines.md) for directories it no longer lists.
 
 The overall status is `complete` only when every requested inventory operation
 completed. Candidate problems or resource limits make it `partial`; an unavailable

@@ -19,7 +19,9 @@ retry after the worker finishes; it is not an automatic retry or cancellation.
 
 Results stay in the panel's memory and are cleared when selecting another item,
 refreshing inventory, leaving the panel, losing the connection or changing user.
-There is no persisted history, automatic scan, export or external resource.
+The panel does not yet show saved history, but scans it starts are saved as
+described in [Saved scan results](ha-baselines.md) unless saving is off. There
+is no automatic scan, export or external resource.
 Source evidence can contain private data; take care when sharing screenshots.
 
 ## Implementation and verification

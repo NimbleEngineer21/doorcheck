@@ -22,6 +22,14 @@ def test_native_structure_uses_shared_messages() -> None:
                 "already_in_progress": render("ha.config.already_in_progress"),
             },
         },
+        "options": {
+            "step": {
+                "init": {
+                    "description": render("ha.options.description"),
+                    "data": {"save_results": render("ha.options.save_results")},
+                }
+            }
+        },
         "services": {
             "scan_integration": {
                 "name": render("ha.service.scan_name"),
@@ -37,6 +45,34 @@ def test_native_structure_uses_shared_messages() -> None:
                 "name": render("ha.service.inventory_name"),
                 "description": render("ha.service.inventory_description"),
             },
+            "get_results": {
+                "name": render("ha.service.results_name"),
+                "description": render("ha.service.results_description"),
+                "fields": {
+                    "directory": {
+                        "name": render("ha.service.scan_directory_name"),
+                        "description": render("ha.service.scan_directory_description"),
+                    }
+                },
+            },
+            "mark_reviewed": {
+                "name": render("ha.service.review_name"),
+                "description": render("ha.service.review_description"),
+                "fields": {
+                    "directory": {
+                        "name": render("ha.service.scan_directory_name"),
+                        "description": render("ha.service.scan_directory_description"),
+                    },
+                    "digest": {
+                        "name": render("ha.service.review_digest_name"),
+                        "description": render("ha.service.review_digest_description"),
+                    },
+                },
+            },
+            "clear_results": {
+                "name": render("ha.service.clear_name"),
+                "description": render("ha.service.clear_description"),
+            },
         },
         "exceptions": {
             "scan_busy": {"message": render("ha.service.scan_busy")},
@@ -44,6 +80,12 @@ def test_native_structure_uses_shared_messages() -> None:
             "inventory_not_configured": {
                 "message": render("ha.service.not_configured"),
             },
+            "results_clear_invalid": {"message": render("ha.service.results_clear_invalid")},
+            "results_incomplete": {"message": render("ha.service.results_incomplete")},
+            "results_invalid_request": {"message": render("ha.service.results_invalid_request")},
+            "results_not_found": {"message": render("ha.service.results_not_found")},
+            "results_not_saving": {"message": render("ha.service.results_not_saving")},
+            "results_stale": {"message": render("ha.service.results_stale")},
         },
     }
 

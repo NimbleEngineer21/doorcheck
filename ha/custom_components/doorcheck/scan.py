@@ -1,8 +1,10 @@
 """Scan a bounded, descriptor-anchored private copy of one installed folder."""
 
+import hashlib
 import os
 import stat
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from importlib.metadata import version
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,6 +14,7 @@ from doorcheck import capabilities, rules
 from doorcheck.capabilities.model import ScanLimits
 from doorcheck.checks import Check, Problem, Status, status_for
 from doorcheck.report import Report, Target
+from doorcheck.tree import read_json_object
 
 from .inventory import _directory
 
@@ -26,11 +29,21 @@ class SnapshotError(Exception):
     """The selected tree could not be copied within the snapshot contract."""
 
 
+@dataclass(frozen=True, slots=True)
+class Scan:
+    """A report plus the SHA-256 of every file in the private copy it read."""
+
+    report: Report
+    files: Mapping[str, str] = field(default_factory=dict)
+    bytecode: Mapping[str, str] = field(default_factory=dict)
+
+
 @dataclass
 class Budget:
     deadline: float
     entries: int = 0
     size: int = 0
+    hashes: dict[str, str] = field(default_factory=dict)
 
     def tick(self) -> None:
         self.entries += 1
@@ -38,7 +51,7 @@ class Budget:
             raise SnapshotError
 
 
-def _file(parent: int, name: str, destination: Path, budget: Budget) -> None:
+def _file(parent: int, name: str, destination: Path, budget: Budget, relative: str) -> None:
     descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
     with os.fdopen(descriptor, "rb") as handle:
         before = os.fstat(handle.fileno())
@@ -56,9 +69,10 @@ def _file(parent: int, name: str, destination: Path, budget: Budget) -> None:
     ):
         raise SnapshotError
     destination.write_bytes(data)
+    budget.hashes[relative] = hashlib.sha256(data).hexdigest()
 
 
-def _copy(parent: int, destination: Path, budget: Budget, depth: int = 0) -> None:
+def _copy(parent: int, destination: Path, budget: Budget, depth: int = 0, prefix: str = "") -> None:
     if depth > MAX_DEPTH:
         raise SnapshotError
     with os.scandir(parent) as entries:
@@ -66,22 +80,42 @@ def _copy(parent: int, destination: Path, budget: Budget, depth: int = 0) -> Non
             budget.tick()
             mode = os.lstat(entry.name, dir_fd=parent).st_mode
             child = destination / entry.name
+            relative = prefix + entry.name
             if stat.S_ISDIR(mode):
                 with _directory(entry.name, parent) as folder:
                     child.mkdir()
-                    _copy(folder, child, budget, depth + 1)
+                    _copy(folder, child, budget, depth + 1, relative + "/")
             elif stat.S_ISREG(mode):
-                _file(parent, entry.name, child, budget)
+                _file(parent, entry.name, child, budget, relative)
             else:
                 raise SnapshotError
     if monotonic() >= budget.deadline:
         raise SnapshotError
 
 
-def scan_integration(root: Path, directory: str) -> Report:
+def is_bytecode(relative: str) -> bool:
+    """Interpreter-written bytecode changes after first load; it is kept apart."""
+    *folders, name = relative.split("/")
+    return "__pycache__" in folders and name.endswith(".pyc")
+
+
+def source_digest(files: Mapping[str, str]) -> str:
+    """The engine's installed-file digest format, for a copy holding only files."""
+    digest = hashlib.sha256()
+    for path in sorted(files):
+        digest.update(f"file\0{path}\0{files[path]}\n".encode())
+    return digest.hexdigest()
+
+
+def _manifest_version(snapshot: Path) -> str | None:
+    manifest = read_json_object(snapshot / "manifest.json") or {}
+    value = manifest.get("version")
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def scan_integration(root: Path, directory: str) -> Scan:
     """Never scan the live tree with the engine's path-based walkers."""
     installed = version("doorcheck")  # pragma: no mutate - package names ignore case
-    target = Target(directory)
     try:
         with TemporaryDirectory() as temporary:
             snapshot = Path(temporary)
@@ -96,14 +130,19 @@ def scan_integration(root: Path, directory: str) -> Report:
             )
             observed = capabilities.scan(snapshot, limits)
             detected = rules.scan(snapshot, limits)
+            manifest_version = _manifest_version(snapshot)
+        files = {path: h for path, h in budget.hashes.items() if not is_bytecode(path)}
+        bytecode = {path: h for path, h in budget.hashes.items() if is_bytecode(path)}
+        target = Target(directory, manifest_version, None, source_digest(files))
         checks = (
             Check("snapshot", installed, Status.COMPLETE),
             Check("capabilities", installed, status_for(observed.problems), observed.problems),
             Check("python-rules", installed, status_for(detected.problems), detected.problems),
         )
-        return Report(installed, target, checks, observed.capabilities, detected.findings)
+        report = Report(installed, target, checks, observed.capabilities, detected.findings)
+        return Scan(report, files, bytecode)
     except (OSError, SnapshotError):
         check = Check(
             "snapshot", installed, Status.FAILED, (Problem("problem.ha_snapshot_failed"),)
         )
-        return Report(installed, target, (check,), (), ())
+        return Scan(Report(installed, Target(directory), (check,), (), ()))

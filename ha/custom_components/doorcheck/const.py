@@ -2,3 +2,4 @@
 
 DOMAIN = "doorcheck"
 NAME = "Doorcheck"
+SAVE_RESULTS = "save_results"

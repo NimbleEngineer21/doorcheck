@@ -1,0 +1,134 @@
+# Saved scan results in Home Assistant
+
+The HA development preview saves the result of each
+[`doorcheck.scan_integration`](ha-scan.md) call, so results survive a restart
+and a later scan can be compared with an earlier one. Saving is on by default.
+Nothing is scanned automatically: a result exists only after an administrator
+asks for a scan.
+
+## What is saved
+
+For each scanned custom-integration directory, Doorcheck keeps two results:
+
+- **Reviewed scan:** the scan later scans are compared with. The first scan
+  with complete coverage becomes the reviewed scan. An administrator replaces
+  it with `doorcheck.mark_reviewed`.
+- **Latest scan:** the most recent scan, including a failed or partial one.
+
+Each saved result holds the full versioned report, the time of the scan (UTC,
+whole seconds), and the SHA-256 of every file in the private copy that was
+scanned. Nothing else is stored: no configuration, credentials or HA paths.
+
+### Identity
+
+The report target records the manifest `version` when the manifest declares a
+nonblank string, and an installed-files SHA-256 in `artifact_sha256`. The digest
+uses the same format as the engine's installed-file digest, so a CLI scan of the
+same folder gives the same value when it holds no bytecode.
+
+Python writes `__pycache__/*.pyc` files the first time an integration loads.
+These files are hashed and saved apart from the source files, and they are not
+part of `artifact_sha256`. Leaving them in would report a change after every
+first load; dropping them would hide a planted `.pyc` file, which Python can
+load in place of its source. Other files in a `__pycache__` folder count as
+source. Bytecode files are still scanned: the capability reader reports each
+`.pyc` file as a shipped binary, so a scan after first load can list
+capabilities that a fresh copy does not.
+
+A manifest version and a digest are declarations about the files that were
+copied. They do not establish where the files came from; origin stays `unknown`.
+
+## Where it is saved
+
+Results are saved in the private store `.storage/doorcheck.results` (file mode
+0600). Home Assistant backups include this file. Source evidence in a report can
+contain private data; treat backups and shared files accordingly. Diagnostics
+expose only the saving status, the number of saved directories and the store
+version, never reports, names or paths.
+
+Limits: 256 directories, and 4 MiB for the whole store. Measured on the 58
+integrations in the benchmark corpus, the median report is about 1 KB, the 90th
+percentile 4 KB, and all reports together 386 KB. A scan that would exceed a
+limit is still returned in full, with `saved: false` and the problem
+`problem.ha_results_limit`; the store keeps its earlier content.
+
+## Actions
+
+All actions are admin-only and need a loaded Doorcheck entry.
+
+| Action | Fields | Result |
+| --- | --- | --- |
+| `doorcheck.scan_integration` | `directory` | The report, plus `results` for that directory |
+| `doorcheck.get_results` | `directory` | `results` for that directory, or `null` when nothing is saved |
+| `doorcheck.mark_reviewed` | `directory`, `digest` | `results`, with the latest scan as the reviewed scan |
+| `doorcheck.clear_results` | none | No response; deletes all saved results |
+
+`mark_reviewed` requires the 64-character lowercase `artifact_sha256` of the
+latest saved scan. It refuses a digest of an earlier scan
+(`results_stale`), so a scan the administrator has not seen cannot become the
+reviewed scan. It also refuses a scan without complete coverage
+(`results_incomplete`) and refuses while saving is off or unavailable.
+
+Changes to saved results run one at a time. `mark_reviewed` checks the digest
+after any save already in progress, so a scan saved while the call waits is
+refused as `results_stale`. A clear is never undone by a save that started
+before it.
+
+### The `results` object
+
+```json
+{
+  "directory": "example",
+  "saving": "on",
+  "saved": true,
+  "problems": [],
+  "latest": {"scanned_at": "2026-11-05T14:02:11+00:00", "report": {}},
+  "baseline": {"scanned_at": "2026-11-01T09:30:00+00:00", "report": {}},
+  "comparison": {
+    "limits": [],
+    "same_artifact": false,
+    "files": {"added": ["extra.py"], "removed": [], "changed": ["code.py"]},
+    "bytecode": {"added": [], "removed": [], "changed": []}
+  }
+}
+```
+
+- `saving` is `on`, `disabled`, or `problem.ha_results_unavailable`.
+- `saved` says whether this exact latest result is in the store.
+- `baseline` is the reviewed scan, or `null` before any scan with complete coverage.
+- `comparison` uses the engine's [comparability limits](comparison.md#comparability-limits)
+  between the reviewed and latest reports, and lists file paths whose hashes
+  were added, removed or changed. It is `null` without a reviewed scan.
+
+A changed file list or a different digest describes the copied files. It is not
+a finding and has no severity. A change can mean an update, a local edit or a
+file replaced on disk; the observations in each report remain the evidence.
+
+## Retention controls
+
+- **Turn saving off:** Doorcheck options → clear **Save scan results**. The entry
+  reloads and the store is deleted. Later scans are returned with
+  `saving: "disabled"` and are not saved. Turning saving on again starts empty.
+- **Clear:** `doorcheck.clear_results` deletes every saved result.
+- **Remove Doorcheck:** removing the integration deletes the store.
+- **Removed folders:** a `doorcheck.get_inventory` call with status `complete`
+  forgets directories it no longer lists. A partial or failed inventory forgets
+  nothing.
+
+## Damaged or unreadable data
+
+Saved results are loaded with the engine's strict report reader. An entry is
+dropped and `problem.ha_results_entry_invalid` is reported when its fields are
+unknown or missing, its report is invalid, its target names another directory,
+its file hashes do not produce its digest, or its reviewed scan lacks complete
+coverage. Valid entries are kept.
+
+Home Assistant itself renames a store file that is not valid JSON, raises a
+Repairs issue and starts empty. A store written by a newer Doorcheck version is
+not overwritten: saving stops for that run with `problem.ha_results_unavailable`.
+`doorcheck.clear_results` deletes it and turns saving back on. The same applies
+to a store version older than any release wrote. A newer minor version of the
+same store version is read as usual.
+
+The store is not signed. Anyone who can edit `.storage` can change saved results
+within these checks; saved results describe earlier scans, not verified history.
