@@ -4,8 +4,10 @@
 HACS release. It provides a native single-instance setup confirmation, setup,
 unload and reload, plus minimal diagnostics and an on-demand read-only custom
 integration inventory and explicit static scans of one selected integration.
-It does not create entities, raise alerts, contact AI providers or start
-background scans. The setup screen states these limits.
+It saves scan results in Home Assistant storage, as described in
+[Saved scan results](ha-baselines.md). It does not create entities, raise
+alerts, contact AI providers or start background scans. The setup screen states
+these limits.
 
 See [Custom integration inventory](ha-inventory.md) for the native action, response
 contract and filesystem coverage boundaries. See [On-demand scanning](ha-scan.md)
@@ -86,16 +88,18 @@ cover this project. The profiles are pinned for reproducibility and do not silen
 float to an untested release.
 
 The [admin results panel](ha-panel.md) uses these same actions through authenticated
-WebSocket commands. It is a development preview with results held only in browser memory.
+WebSocket commands. It is a development preview; it does not yet show
+[saved scan results](ha-baselines.md), which the actions return.
 
 [Disposable container acceptance](ha-acceptance.md) additionally exercises normal
 HA startup and authenticated HTTP/WebSocket behavior in all three pinned profiles,
 with redacted evidence and resource measurements.
 
 Framework tests exercise real config-entry flows and lifecycle, concurrent setup,
-single-instance enforcement and diagnostic data minimization. Diagnostics expose
-only the installed engine version and `scanning_available: true`; entry data,
-options, credentials, names and local paths are not copied into the response.
+single-instance enforcement, saved-result restarts and diagnostic data
+minimization. Diagnostics expose only the installed engine version,
+`scanning_available: true` and saved-result counts; entry data, options,
+credentials, reports, names and local paths are not copied into the response.
 
 ## Native translations
 

@@ -174,7 +174,8 @@ def test_limited_text_retains_both_problems_without_source_scope_claims(
     )
     assert cli.main(args(tmp_path, bad, bad, json_output=False)) == 2
     text = capsys.readouterr().out
-    assert render("cli.compare_limited") in text
+    reasons = render("comparison.before_incomplete") + "\n" + render("comparison.after_incomplete")
+    assert render("cli.compare_limited") + "\n" + reasons + "\n" in text
     assert text.count("Coverage gap at -: The scanner failed.") == 2
     assert text.count("Check version: tool = 9") == 2
     assert render("cli.scope") not in text
@@ -303,7 +304,8 @@ def test_hostile_report_fields_cannot_add_terminal_rows(tmp_path: Path, capsys) 
     text = capsys.readouterr().out
     assert "\x1b" not in text and "\t" not in text and "\u202e" not in text
     assert "⟨U+000A⟩⟨U+0009⟩⟨U+202E⟩" in text
-    assert text.count("\n") == 24
+    # 24 rows plus one fixed catalog row per limit: target, engine and check versions.
+    assert text.count("\n") == 24 + 3
 
 
 @pytest.mark.parametrize(
@@ -446,3 +448,15 @@ def test_invalid_routing_arguments_never_start_a_scan(arguments, capsys) -> None
     output = capsys.readouterr()
     assert output.out == ""
     assert output.err == render("cli.invalid_arguments") + "\n"
+
+
+def test_limited_text_names_each_metadata_reason_in_order(tmp_path: Path, capsys) -> None:
+    after = replace(EMPTY, doorcheck_version="2", target=Target("other"))
+    assert cli.main(args(tmp_path, EMPTY, after, json_output=False)) == 2
+    lines = capsys.readouterr().out.splitlines()
+    start = lines.index(render("cli.compare_limited"))
+    assert lines[start + 1 : start + 4] == [
+        render("comparison.target_name"),
+        render("comparison.engine_version"),
+        render("cli.compare_removed"),
+    ]

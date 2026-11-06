@@ -11,10 +11,11 @@ import socket
 import sys
 import tempfile
 import zipfile
+from collections.abc import AsyncIterator
 from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import IO, Any
 
 import aiohttp
 
@@ -37,9 +38,10 @@ def require(condition: bool, check: str) -> None:
 
 class Instance:
     def __init__(
-        self, child: asyncio.subprocess.Process, port: int, validation_status: int
+        self, child: asyncio.subprocess.Process, port: int, validation_status: int, config: Path
     ) -> None:
         self.validation_status = validation_status
+        self.custom = config / "custom_components"
         self.child = child
         if child.stdout is None or child.stdin is None:
             raise AcceptanceFailure("child_pipes")
@@ -142,7 +144,18 @@ async def measured_scan(
     return report, metrics
 
 
-async def exercise(instance: Instance) -> Record:
+async def saved_results(instance: Instance, session: aiohttp.ClientSession) -> Any:
+    status, body = await instance.request(
+        session,
+        "POST",
+        "/api/services/doorcheck/get_results?return_response",
+        {"directory": "dc_acceptance"},
+    )
+    require(status == 200, "saved_results_response")
+    return body["service_response"]["results"]
+
+
+async def exercise(instance: Instance) -> tuple[Record, str, Any]:
     async with aiohttp.ClientSession(
         timeout=aiohttp.ClientTimeout(total=40), trust_env=False
     ) as session:
@@ -189,6 +202,8 @@ async def exercise(instance: Instance) -> Record:
         )
         require(report["findings"][0]["rule_id"] == "ha-unauth-view-unsanitized-path", "known_rule")
         for directory in (
+            "dc_helpers",
+            "dc_helpers_fixed",
             "dc_broken",
             "dc_oversized",
             "dc_linked",
@@ -199,7 +214,21 @@ async def exercise(instance: Instance) -> Record:
             report, metrics = await measured_scan(instance, session, directory)
             measurements.append(metrics)
             statuses = metrics["checks"]
-            if directory == "dc_broken":
+            if directory in {"dc_helpers", "dc_helpers_fixed"}:
+                checks[directory] = all(value == "complete" for value in statuses.values()) and len(
+                    report["findings"]
+                ) == (1 if directory == "dc_helpers" else 0)
+                if directory == "dc_helpers":
+                    require(
+                        report["findings"][0]["location"]
+                        == {"path": "__init__.py", "line": 9, "column": None},
+                        "helper_finding_location",
+                    )
+                    require(
+                        report["findings"][0]["params"]["sink_path"] == "reader.py",
+                        "helper_sink_path",
+                    )
+            elif directory == "dc_broken":
                 checks["parse_gap"] = (
                     statuses["capabilities"] == statuses["python-rules"] == "partial"
                 )
@@ -208,12 +237,29 @@ async def exercise(instance: Instance) -> Record:
             else:
                 checks[directory] = statuses.get("snapshot") == "complete"
         measurements.append(await disconnected_scan(instance, session))
-        status, _ = await instance.request(
-            session, "POST", f"/api/config/config_entries/entry/{entry}/reload", {}
-        )
-        require(status == 200, "native_reload")
-        status, _ = await instance.scan(session, "dc_acceptance")
-        require(status == 200, "scan_after_reload")
+        saved = await reloaded(instance, session, entry)
+    return {"measurements": measurements, "checks": checks}, entry, saved
+
+
+async def reloaded(instance: Instance, session: aiohttp.ClientSession, entry: str) -> Any:
+    """A scan after a native reload is saved; its saved view is compared after restart."""
+    status, _ = await instance.request(
+        session, "POST", f"/api/config/config_entries/entry/{entry}/reload", {}
+    )
+    require(status == 200, "native_reload")
+    status, _ = await instance.scan(session, "dc_acceptance")
+    require(status == 200, "scan_after_reload")
+    saved = await saved_results(instance, session)
+    require(saved is not None and saved["saved"] is True, "results_saved")
+    return saved
+
+
+async def restarted(instance: Instance, entry: str, saved: Any, store: Path) -> None:
+    async with aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=40), trust_env=False
+    ) as session:
+        require(await saved_results(instance, session) == saved, "results_after_restart")
+        await panel_after_restart(instance, session, saved)
         status, _ = await instance.request(
             session, "DELETE", f"/api/config/config_entries/entry/{entry}"
         )
@@ -224,7 +270,7 @@ async def exercise(instance: Instance) -> Record:
             instance, session, {"directory": "dc_acceptance"}, "inventory_not_configured"
         )
         await panel_removed(instance, session)
-    return {"measurements": measurements, "checks": checks}
+    require(not store.exists(), "results_removed_with_entry")
 
 
 async def panel_message(
@@ -266,21 +312,24 @@ async def panel_api(instance: Instance, session: aiohttp.ClientSession) -> None:
         result = await panel_message(
             instance, connection, 3, "doorcheck/panel_scan", directory="dc_acceptance"
         )
-        require(result["success"] and result["result"]["complete"], "panel_scan")
-        finding = result["result"]["findings"][0]
+        require(
+            result["success"] and result["result"]["latest"]["report"]["complete"], "panel_scan"
+        )
+        latest = result["result"]["latest"]
+        finding = latest["report"]["findings"][0]
         require(
             finding["rule"] == "ha-unauth-view-unsanitized-path"
             and "__init__.py:8" in finding["location"],
             "panel_finding",
         )
+        await panel_saved(instance, connection, latest["scan_id"])
     async with session.ws_connect(instance.url + "/api/websocket") as connection:
         await connection.receive_json()
         await connection.send_json({"type": "auth", "access_token": instance.tokens["user"]})
         require((await connection.receive_json())["type"] == "auth_ok", "panel_user_authenticated")
         panels = await panel_message(instance, connection, 1, "get_panels")
         require("doorcheck" not in panels["result"], "panel_hidden_for_user")
-        for number, command in ((2, "inventory"), (3, "scan")):
-            data = {"directory": "dc_acceptance"} if command == "scan" else {}
+        for number, (command, data) in enumerate(PANEL_COMMANDS, start=2):
             denied = await panel_message(
                 instance, connection, number, "doorcheck/panel_" + command, **data
             )
@@ -288,6 +337,75 @@ async def panel_api(instance: Instance, session: aiohttp.ClientSession) -> None:
                 not denied["success"] and denied["error"]["code"] == "unauthorized",
                 "panel_commands_admin_only",
             )
+
+
+PANEL_COMMANDS: tuple[tuple[str, Record], ...] = (
+    ("inventory", {}),
+    ("scan", {"directory": "dc_acceptance"}),
+    ("results", {"directory": "dc_acceptance"}),
+    ("review", {"directory": "dc_acceptance", "scan_id": "0" * 64}),
+    ("clear", {}),
+)
+
+
+async def panel_saved(
+    instance: Instance, connection: aiohttp.ClientWebSocketResponse, scan_id: str
+) -> None:
+    """Open, rescan a changed tree, review it and clear; the main scans run after this."""
+    data = {"directory": "dc_acceptance"}
+    opened = await panel_message(instance, connection, 4, "doorcheck/panel_results", **data)
+    require(
+        opened["success"] and opened["result"]["latest"]["scan_id"] == scan_id,
+        "panel_saved_result",
+    )
+    # A changed tree gives a newer scan; the first one stays the reviewed scan.
+    added = instance.custom / "dc_acceptance/panel_review.py"
+    added.write_text("VALUE = 1\n")
+    try:
+        rescanned = await panel_message(instance, connection, 5, "doorcheck/panel_scan", **data)
+    finally:
+        added.unlink()
+    view = rescanned["result"]
+    newer = view["latest"]["scan_id"]
+    require(
+        rescanned["success"]
+        and newer != scan_id
+        and view["baseline"]["scan_id"] == scan_id
+        and view["comparison"]["changed"]
+        and view["comparison"]["files"]["added"] == ["panel_review.py"]
+        and view["reviewable"],
+        "panel_changes",
+    )
+    reviewed = await panel_message(
+        instance, connection, 6, "doorcheck/panel_review", scan_id=newer, **data
+    )
+    require(
+        reviewed["success"]
+        and reviewed["result"]["reviewed"]
+        and reviewed["result"]["baseline"]["scan_id"] == newer,
+        "panel_review",
+    )
+    cleared = await panel_message(instance, connection, 7, "doorcheck/panel_clear")
+    after = await panel_message(instance, connection, 8, "doorcheck/panel_results", **data)
+    require(
+        cleared["success"] and after["success"] and after["result"]["latest"] is None,
+        "panel_clear",
+    )
+
+
+async def panel_after_restart(
+    instance: Instance, session: aiohttp.ClientSession, saved: Any
+) -> None:
+    async with session.ws_connect(instance.url + "/api/websocket") as connection:
+        await authenticated_socket(instance, connection)
+        opened = await panel_message(
+            instance, connection, 1, "doorcheck/panel_results", directory="dc_acceptance"
+        )
+        require(
+            opened["success"]
+            and opened["result"]["latest"]["scan_id"] == saved["latest"]["scan_id"],
+            "panel_saved_after_restart",
+        )
 
 
 async def panel_removed(instance: Instance, session: aiohttp.ClientSession) -> None:
@@ -385,6 +503,41 @@ async def disconnected_scan(instance: Instance, session: aiohttp.ClientSession) 
     }
 
 
+@contextlib.asynccontextmanager
+async def booted(
+    config: Path, environment: dict[str, str], log: IO[str], port: int, validation_status: int
+) -> AsyncIterator[Instance]:
+    """One HA process on the shared config; it is always gone on exit."""
+    child = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "acceptance.instance",
+        str(config),
+        env=environment,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=log,
+    )
+    try:
+        instance = Instance(child, port, validation_status, config)
+        ready = await instance.record()
+        require(ready["ready"], "normal_bootstrap")
+        instance.tokens = ready["tokens"]
+        yield instance
+    finally:
+        if child.returncode is None:
+            child.kill()
+            await child.wait()
+
+
+async def stopped(instance: Instance) -> Record:
+    final = await instance.command("stop")
+    await asyncio.wait_for(instance.child.wait(), 30)
+    require(instance.child.returncode == 0, "clean_shutdown")
+    require(not final["control_imported"], "candidate_not_imported")
+    return final
+
+
 def configure(config: Path) -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -423,42 +576,31 @@ async def run(
             "PYTHONPATH": f"{engine}:{source / 'ha'}",
             "TMPDIR": str(scan_tmp),
         }
+        tokens: list[str] = []
+        store = config / ".storage/doorcheck.results"
         with (workspace / "ha.log").open("w") as log:
-            child = await asyncio.create_subprocess_exec(
-                sys.executable,
-                "-m",
-                "acceptance.instance",
-                str(config),
-                env=environment,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=log,
-            )
-            instance = Instance(child, port, validation_status)
-            try:
-                ready = await instance.record()
-                require(ready["ready"], "normal_bootstrap")
-                instance.tokens = ready["tokens"]
-                result = await exercise(instance)
-                final = await instance.command("stop")
-                await asyncio.wait_for(child.wait(), 30)
-                require(child.returncode == 0, "clean_shutdown")
-                require(not final["control_imported"], "candidate_not_imported")
-                require(
-                    all(
-                        fingerprint(config / "custom_components" / name) == digest
-                        for name, digest in original.items()
-                    ),
-                    "installed_sources_unchanged",
-                )
-                require(not list(scan_tmp.iterdir()), "snapshot_cleanup")
-            finally:
-                if child.returncode is None:
-                    child.kill()
-                    await child.wait()
+            async with booted(config, environment, log, port, validation_status) as instance:
+                tokens.extend(instance.tokens.values())
+                result, entry, saved = await exercise(instance)
+                # The scan workload runs here, so these are the reported resources.
+                final = await stopped(instance)
+            # Saved results must be on disk and private before HA starts again.
+            require(store.exists() and not store.stat().st_mode & 0o077, "results_store_private")
+            async with booted(config, environment, log, port, validation_status) as instance:
+                tokens.extend(instance.tokens.values())
+                await restarted(instance, entry, saved, store)
+                await stopped(instance)
+        require(
+            all(
+                fingerprint(config / "custom_components" / name) == digest
+                for name, digest in original.items()
+            ),
+            "installed_sources_unchanged",
+        )
+        require(not list(scan_tmp.iterdir()), "snapshot_cleanup")
         result["checks"].update(CHECKS)
         require(
-            not any(token in json.dumps(result) for token in instance.tokens.values()),
+            not any(token in json.dumps(result) for token in tokens),
             "credential_redaction",
         )
         result["checks"].update(CHECKS)

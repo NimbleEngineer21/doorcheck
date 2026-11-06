@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1] / "ha/custom_components/doorcheck"
 
 
 def catalog(locale: str | None = None) -> dict[str, object]:
+    directory = {
+        "name": render("ha.service.scan_directory_name", locale=locale),
+        "description": render("ha.service.scan_directory_description", locale=locale),
+    }
     return {
         "config": {
             "step": {"user": {"description": render("ha.config.description", locale=locale)}},
@@ -20,22 +24,45 @@ def catalog(locale: str | None = None) -> dict[str, object]:
                 "already_in_progress": render("ha.config.already_in_progress", locale=locale),
             },
         },
+        "options": {
+            "step": {
+                "init": {
+                    "description": render("ha.options.description", locale=locale),
+                    "data": {"save_results": render("ha.options.save_results", locale=locale)},
+                }
+            }
+        },
         "services": {
             "scan_integration": {
                 "name": render("ha.service.scan_name", locale=locale),
                 "description": render("ha.service.scan_description", locale=locale),
-                "fields": {
-                    "directory": {
-                        "name": render("ha.service.scan_directory_name", locale=locale),
-                        "description": render(
-                            "ha.service.scan_directory_description", locale=locale
-                        ),
-                    }
-                },
+                "fields": {"directory": directory},
             },
             "get_inventory": {
                 "name": render("ha.service.inventory_name", locale=locale),
                 "description": render("ha.service.inventory_description", locale=locale),
+            },
+            "get_results": {
+                "name": render("ha.service.results_name", locale=locale),
+                "description": render("ha.service.results_description", locale=locale),
+                "fields": {"directory": directory},
+            },
+            "mark_reviewed": {
+                "name": render("ha.service.review_name", locale=locale),
+                "description": render("ha.service.review_description", locale=locale),
+                "fields": {
+                    "directory": directory,
+                    "scan_id": {
+                        "name": render("ha.service.review_scan_id_name", locale=locale),
+                        "description": render(
+                            "ha.service.review_scan_id_description", locale=locale
+                        ),
+                    },
+                },
+            },
+            "clear_results": {
+                "name": render("ha.service.clear_name", locale=locale),
+                "description": render("ha.service.clear_description", locale=locale),
             },
         },
         "exceptions": {
@@ -45,6 +72,23 @@ def catalog(locale: str | None = None) -> dict[str, object]:
             },
             "inventory_not_configured": {
                 "message": render("ha.service.not_configured", locale=locale)
+            },
+            "results_clear_invalid": {
+                "message": render("ha.service.results_clear_invalid", locale=locale)
+            },
+            "results_incomplete": {
+                "message": render("ha.service.results_incomplete", locale=locale)
+            },
+            "results_invalid_request": {
+                "message": render("ha.service.results_invalid_request", locale=locale)
+            },
+            "results_not_found": {"message": render("ha.service.results_not_found", locale=locale)},
+            "results_not_saving": {
+                "message": render("ha.service.results_not_saving", locale=locale)
+            },
+            "results_stale": {"message": render("ha.service.results_stale", locale=locale)},
+            "results_write_failed": {
+                "message": render("ha.service.results_write_failed", locale=locale)
             },
         },
     }

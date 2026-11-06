@@ -2,13 +2,23 @@
   "config": {
     "step": {
       "user": {
-        "description": "This development preview provides custom integration inventory and on-demand static scans. It does not provide update alerts or establish safety."
+        "description": "This development preview provides custom integration inventory and on-demand static scans. Scan results are saved in Home Assistant storage until you clear them or turn saving off. It does not provide update alerts or establish safety."
       }
     },
     "abort": {
       "already_configured": "Doorcheck is already configured.",
       "single_instance_allowed": "Doorcheck is already configured.",
       "already_in_progress": "Doorcheck setup is already in progress."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Saved results keep the reviewed scan and the latest scan of each scanned integration in Home Assistant storage. Backups include them. Turning saving off deletes them.",
+        "data": {
+          "save_results": "Save scan results"
+        }
+      }
     }
   },
   "services": {
@@ -25,6 +35,34 @@
     "get_inventory": {
       "name": "Get custom integration inventory",
       "description": "Read declared manifest facts from custom integration folders. This does not scan their code or establish safety."
+    },
+    "get_results": {
+      "name": "Get saved scan results",
+      "description": "Read the reviewed scan and the latest saved scan of one custom integration without scanning again.",
+      "fields": {
+        "directory": {
+          "name": "Integration directory",
+          "description": "The exact directory name shown by Get custom integration inventory."
+        }
+      }
+    },
+    "mark_reviewed": {
+      "name": "Mark scan as reviewed",
+      "description": "Make the latest saved scan of one custom integration its reviewed scan. Later scans are compared with it.",
+      "fields": {
+        "directory": {
+          "name": "Integration directory",
+          "description": "The exact directory name shown by Get custom integration inventory."
+        },
+        "scan_id": {
+          "name": "Scan ID",
+          "description": "The scan ID of the latest saved scan. Get saved scan results returns it."
+        }
+      }
+    },
+    "clear_results": {
+      "name": "Clear saved scan results",
+      "description": "Delete all saved Doorcheck scan results, including results that could not be read."
     }
   },
   "exceptions": {
@@ -36,6 +74,27 @@
     },
     "inventory_not_configured": {
       "message": "Set up and enable Doorcheck before requesting an inventory or scan."
+    },
+    "results_clear_invalid": {
+      "message": "Clear saved scan results takes no fields."
+    },
+    "results_incomplete": {
+      "message": "Only a scan with complete coverage can become the reviewed scan."
+    },
+    "results_invalid_request": {
+      "message": "Send the integration directory and the 64-character scan ID of its latest saved scan."
+    },
+    "results_not_found": {
+      "message": "No saved scan exists for this integration directory."
+    },
+    "results_not_saving": {
+      "message": "Saving scan results is turned off or unavailable."
+    },
+    "results_stale": {
+      "message": "This is no longer the latest saved scan. Open the latest result and try again."
+    },
+    "results_write_failed": {
+      "message": "Saved results could not be written. The earlier saved results are kept."
     }
   }
 }

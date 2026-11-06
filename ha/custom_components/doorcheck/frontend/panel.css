@@ -36,3 +36,10 @@ summary { cursor: pointer; min-block-size: 48px; align-content: center; }
 .gap { border-inline-start: 3px solid currentColor; padding-inline-start: var(--dc-space-4); }
 @media (max-width: 480px) { main, [role="status"] { padding-inline: var(--dc-space-4); } .controls > button { flex: 1 1 auto; } header { align-items: start; flex-direction: column; } }
 @media (forced-colors: active) { .severity { color: CanvasText; } }
+.state { font-weight: 600; }
+.paths ul { padding-inline-start: var(--dc-space-6); }
+.paths li { margin-block: var(--dc-space-2); }
+dialog { box-sizing: border-box; max-inline-size: min(32rem, calc(100vw - 2 * var(--dc-space-4))); padding: var(--dc-space-6); color: var(--primary-text-color, var(--dc-text)); background: var(--card-background-color, var(--dc-surface)); border: 1px solid currentColor; border-radius: var(--dc-radius); }
+dialog::backdrop { background: rgb(0 0 0 / .5); }
+dialog h2 { margin-block-start: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--dc-space-4); }
