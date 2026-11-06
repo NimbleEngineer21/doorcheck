@@ -50,8 +50,10 @@ async def _options_updated(hass: HomeAssistant, entry: DoorcheckEntry) -> None:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: DoorcheckEntry) -> bool:
-    """Remove the sidebar; actions still enforce the loaded-entry gate."""
+    """Remove the sidebar and stop saving; actions still enforce the loaded-entry gate."""
     panel.unload(hass)
+    # A scan still running must not write a store that a reload or removal replaced.
+    await entry.runtime_data.results.close()
     return True
 
 

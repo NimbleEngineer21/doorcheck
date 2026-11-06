@@ -54,9 +54,9 @@
           "name": "Integration directory",
           "description": "The exact directory name shown by Get custom integration inventory."
         },
-        "digest": {
-          "name": "Scan SHA-256",
-          "description": "The installed-files SHA-256 of the latest saved scan."
+        "scan_id": {
+          "name": "Scan ID",
+          "description": "The scan ID of the latest saved scan. Get saved scan results returns it."
         }
       }
     },
@@ -82,7 +82,7 @@
       "message": "Only a scan with complete coverage can become the reviewed scan."
     },
     "results_invalid_request": {
-      "message": "Send the integration directory and the 64-character SHA-256 of its latest saved scan."
+      "message": "Send the integration directory and the 64-character scan ID of its latest saved scan."
     },
     "results_not_found": {
       "message": "No saved scan exists for this integration directory."
@@ -92,6 +92,9 @@
     },
     "results_stale": {
       "message": "This is no longer the latest saved scan. Open the latest result and try again."
+    },
+    "results_write_failed": {
+      "message": "Saved results could not be written. The earlier saved results are kept."
     }
   }
 }

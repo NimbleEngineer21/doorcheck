@@ -125,6 +125,9 @@ async def test_cancelled_caller_retains_single_worker_slot(
 ) -> None:
     await loaded(hass)
     hass.config.config_dir = str(tmp_path)
+    # A folder that exists but cannot be copied: the failed scan is still saved.
+    (tmp_path / "custom_components/example").mkdir(parents=True)
+    (tmp_path / "custom_components/example/data").symlink_to("/etc/hosts")
     entered, release = threading.Event(), threading.Event()
     original = services.scan_integration
 

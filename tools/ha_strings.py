@@ -52,10 +52,10 @@ def catalog(locale: str | None = None) -> dict[str, object]:
                 "description": render("ha.service.review_description", locale=locale),
                 "fields": {
                     "directory": directory,
-                    "digest": {
-                        "name": render("ha.service.review_digest_name", locale=locale),
+                    "scan_id": {
+                        "name": render("ha.service.review_scan_id_name", locale=locale),
                         "description": render(
-                            "ha.service.review_digest_description", locale=locale
+                            "ha.service.review_scan_id_description", locale=locale
                         ),
                     },
                 },
@@ -87,6 +87,9 @@ def catalog(locale: str | None = None) -> dict[str, object]:
                 "message": render("ha.service.results_not_saving", locale=locale)
             },
             "results_stale": {"message": render("ha.service.results_stale", locale=locale)},
+            "results_write_failed": {
+                "message": render("ha.service.results_write_failed", locale=locale)
+            },
         },
     }
 

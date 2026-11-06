@@ -63,7 +63,8 @@ imported or executed. No external scanners, network calls or AI providers run.
 Only one scan worker can be active per HA instance. Concurrent requests receive
 a translated busy error. Cancelling a caller does not terminate a thread or free
 the slot: the bounded worker completes and cleans up before another scan can
-start. Unloading Doorcheck rejects new requests; an existing worker finishes.
+start. Unloading Doorcheck rejects new requests; an existing worker finishes,
+but its result is not saved.
 Setup, reload and inventory calls do not start scans. There are no background
 hooks or alerts in this slice. A caller that leaves early does not stop the
 scan; its result is still saved.

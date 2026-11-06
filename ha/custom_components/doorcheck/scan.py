@@ -31,11 +31,15 @@ class SnapshotError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class Scan:
-    """A report plus the SHA-256 of every file in the private copy it read."""
+    """A report plus the SHA-256 of every file in the private copy it read.
+
+    `missing` means the folder, or custom_components itself, did not exist.
+    """
 
     report: Report
     files: Mapping[str, str] = field(default_factory=dict)
     bytecode: Mapping[str, str] = field(default_factory=dict)
+    missing: bool = False
 
 
 @dataclass
@@ -116,10 +120,10 @@ def _manifest_version(snapshot: Path) -> str | None:
 def scan_integration(root: Path, directory: str) -> Scan:
     """Never scan the live tree with the engine's path-based walkers."""
     installed = version("doorcheck")  # pragma: no mutate - package names ignore case
+    budget = Budget(monotonic() + SECONDS)
     try:
         with TemporaryDirectory() as temporary:
             snapshot = Path(temporary)
-            budget = Budget(monotonic() + SECONDS)
             with _directory(root) as parent, _directory(directory, parent) as selected:
                 _copy(selected, snapshot, budget)
             limits = ScanLimits(
@@ -141,8 +145,10 @@ def scan_integration(root: Path, directory: str) -> Scan:
         )
         report = Report(installed, target, checks, observed.capabilities, detected.findings)
         return Scan(report, files, bytecode)
-    except (OSError, SnapshotError):
+    except (OSError, SnapshotError) as error:
         check = Check(
             "snapshot", installed, Status.FAILED, (Problem("problem.ha_snapshot_failed"),)
         )
-        return Scan(Report(installed, Target(directory), (check,), (), ()))
+        # Not found before the first entry: the folder was never there to read.
+        missing = isinstance(error, FileNotFoundError) and budget.entries == 0
+        return Scan(Report(installed, Target(directory), (check,), (), ()), missing=missing)

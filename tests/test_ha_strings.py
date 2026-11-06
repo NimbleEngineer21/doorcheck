@@ -63,9 +63,9 @@ def test_native_structure_uses_shared_messages() -> None:
                         "name": render("ha.service.scan_directory_name"),
                         "description": render("ha.service.scan_directory_description"),
                     },
-                    "digest": {
-                        "name": render("ha.service.review_digest_name"),
-                        "description": render("ha.service.review_digest_description"),
+                    "scan_id": {
+                        "name": render("ha.service.review_scan_id_name"),
+                        "description": render("ha.service.review_scan_id_description"),
                     },
                 },
             },
@@ -86,8 +86,25 @@ def test_native_structure_uses_shared_messages() -> None:
             "results_not_found": {"message": render("ha.service.results_not_found")},
             "results_not_saving": {"message": render("ha.service.results_not_saving")},
             "results_stale": {"message": render("ha.service.results_stale")},
+            "results_write_failed": {"message": render("ha.service.results_write_failed")},
         },
     }
+
+
+def _leaves(data: object) -> list[object]:
+    if isinstance(data, dict):
+        return [leaf for value in data.values() for leaf in _leaves(value)]
+    return [data]
+
+
+def test_every_string_is_rendered_in_the_requested_locale() -> None:
+    def tagged(key: str, *, locale: str | None = None) -> str:
+        return f"{key}@{locale}"
+
+    with patch.object(ha_strings, "render", tagged):
+        leaves = _leaves(ha_strings.catalog("xx"))
+    assert len(leaves) == 34
+    assert [leaf for leaf in leaves if not str(leaf).endswith("@xx")] == []
 
 
 def test_repository_setup_strings_are_current(capsys: pytest.CaptureFixture[str]) -> None:

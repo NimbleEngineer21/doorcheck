@@ -17,7 +17,7 @@ mark_reviewed:
       required: true
       selector:
         text: {}
-    digest:
+    scan_id:
       required: true
       selector:
         text: {}

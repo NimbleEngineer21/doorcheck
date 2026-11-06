@@ -236,15 +236,21 @@ async def exercise(instance: Instance) -> tuple[Record, str, Any]:
             else:
                 checks[directory] = statuses.get("snapshot") == "complete"
         measurements.append(await disconnected_scan(instance, session))
-        status, _ = await instance.request(
-            session, "POST", f"/api/config/config_entries/entry/{entry}/reload", {}
-        )
-        require(status == 200, "native_reload")
-        status, _ = await instance.scan(session, "dc_acceptance")
-        require(status == 200, "scan_after_reload")
-        saved = await saved_results(instance, session)
-        require(saved is not None and saved["saved"] is True, "results_saved")
+        saved = await reloaded(instance, session, entry)
     return {"measurements": measurements, "checks": checks}, entry, saved
+
+
+async def reloaded(instance: Instance, session: aiohttp.ClientSession, entry: str) -> Any:
+    """A scan after a native reload is saved; its saved view is compared after restart."""
+    status, _ = await instance.request(
+        session, "POST", f"/api/config/config_entries/entry/{entry}/reload", {}
+    )
+    require(status == 200, "native_reload")
+    status, _ = await instance.scan(session, "dc_acceptance")
+    require(status == 200, "scan_after_reload")
+    saved = await saved_results(instance, session)
+    require(saved is not None and saved["saved"] is True, "results_saved")
+    return saved
 
 
 async def restarted(instance: Instance, entry: str, saved: Any, store: Path) -> None:

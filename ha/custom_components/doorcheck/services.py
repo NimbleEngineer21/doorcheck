@@ -15,7 +15,7 @@ from doorcheck.report import to_dict
 
 from .const import DOMAIN
 from .inventory import read_inventory
-from .results import REVIEW_ERROR, Item, Results, Saved
+from .results import REVIEW_ERROR, Item, Results, Saved, scan_id
 from .scan import scan_integration
 
 if TYPE_CHECKING:
@@ -76,14 +76,16 @@ def register(hass: HomeAssistant) -> None:
         directory = _directory(call.data)
         item = results.items.get(directory)
         view = None if item is None else await _view(hass, results, directory, item, [])
-        return {"scope": "saved_results", "results": view}
+        # Store problems are listed even when no entry for this directory survived.
+        return {"scope": "saved_results", "problems": list(results.problems), "results": view}
 
     async def review(call: ServiceCall) -> ServiceResponse:
         results = _loaded(hass).runtime_data.results
         directory = _directory(call.data)
-        item = await results.review(directory, call.data.get("digest"))
+        item = await results.review(directory, call.data.get("scan_id"))
         return {
             "scope": "saved_results",
+            "problems": list(results.problems),
             "results": await _view(hass, results, directory, item, []),
         }
 
@@ -96,7 +98,7 @@ def register(hass: HomeAssistant) -> None:
     for name, handler, schema in (
         (SERVICE_SCAN, scan, _fields({"directory"}, DIRECTORY_ERROR)),
         (SERVICE_RESULTS, saved, _fields({"directory"}, DIRECTORY_ERROR)),
-        (SERVICE_REVIEW, review, _fields({"directory", "digest"}, REVIEW_ERROR)),
+        (SERVICE_REVIEW, review, _fields({"directory", "scan_id"}, REVIEW_ERROR)),
     ):
         async_register_admin_service(
             hass,
@@ -163,7 +165,11 @@ def _view_data(results: Results, directory: str, item: Item, problems: list[str]
 
 
 def _record(saved: Saved) -> dict[str, Any]:
-    return {"scanned_at": saved.scanned_at, "report": to_dict(saved.report)}
+    return {
+        "scan_id": scan_id(saved),
+        "scanned_at": saved.scanned_at,
+        "report": to_dict(saved.report),
+    }
 
 
 def _changed(before: Any, after: Any) -> dict[str, list[str]]:
