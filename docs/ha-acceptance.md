@@ -49,6 +49,8 @@ retained for repeat runs.
   inventory/scan commands, a retained finding and rejection after removal.
 - Rejection of anonymous/non-admin callers, missing response requests and paths.
 - Preservation of a known inert rule finding and explicit Python parser gaps.
+- An inert cross-file helper finding at its route call site, supporting sink
+  location, and no finding for the corresponding sanitized input.
 - Failed snapshots for a missing folder, a symlink and an oversized file.
 - Scanning the pinned Frigate and Alexa Media Player reference trees, without
   loading either integration or executing their code.
@@ -56,7 +58,11 @@ retained for repeat runs.
 - A busy response while another scan runs; an authenticated API probe completing
   during that scan; disconnecting the client while work is in flight; retaining
   the worker slot until it finishes; and a subsequent successful scan.
+- A saved result after the last scan. The store file stays private on disk
+  while HA is stopped. A second HA process on the same configuration returns the
+  same saved result.
 - Native reload, removal and rejection of scans without a configured entry.
+  Removal, on the second process, deletes the saved-results store.
 - Unchanged selected source trees, no candidate imports and no leftover snapshots.
 
 A workload of 48 inert Python files also exercises the cooperative stage budgets.

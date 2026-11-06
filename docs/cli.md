@@ -159,7 +159,7 @@ By default only two built-in source checks run. Semgrep can additionally be
 requested with `--semgrep-rule PATH`. There are no dependency advisories, zizmor
 or GuardDog checks in this command. The [Python rule's
 blind spots](rules.md#blind-spots) and [capability limits](http-observations.md)
-still apply, including the documented helper-flow miss in HACS.
+still apply. The current rule follows bounded local helper calls.
 
 Every check uses the existing default file-count, per-file byte and elapsed-time
 budgets. They run sequentially and each receives its own budget. There is no
@@ -203,10 +203,9 @@ $ echo $?
 0
 ```
 
-The detection behavior is unchanged: 2/3 pinned published file-read cases are
-caught, with no Review/Serious alarms on the 70 reference projects or three
-fixed releases. These counts measure the existing rule, not broader CLI threat
-coverage. The CLI additionally preserves source-reader gaps instead of presenting
+The current built-in rule catches 3/3 pinned published file-read cases, with no
+Review/Serious alarms on the 70 reference projects or three fixed releases.
+These counts measure the existing rule, not broader CLI threat coverage. The CLI additionally preserves source-reader gaps instead of presenting
 those folders as fully checked.
 
 A local smoke run across all 78 full pinned checkouts returned 74 complete scans
@@ -283,8 +282,9 @@ These reports use exit codes 1 and 0 respectively. The installed-file digests
 match the corresponding commit scans above.
 
 HACS `--tag 1.9.0` and `--tag 1.10.0` exercise named `hacs.zip` release installs.
-All three checks completed with no findings, so both return 0. The vulnerable
-version remains a documented helper-flow miss; this CLI feature adds no rule.
+The recorded runs predate helper tracing: all three checks completed with no
+findings, so both returned 0. New source scans catch the vulnerable version;
+see the [current rule evidence](rules.md). This CLI feature adds no rule.
 Observed source commits and actual installed-file digests:
 
 | Tag | Source commit | Installed files SHA-256 |
@@ -316,6 +316,6 @@ All requested checks completed. On the pinned Font Awesome pair, it reported
 `custom_component_server.py:19` in 1.2.0 and also `:24` in the fixed 1.3.0. The
 latter is a false alarm: this test rule does not model `sanitize_path`. It is
 not a production rule pack or an improvement to the built-in benchmark. The
-built-in detector still catches 2/3 published file-read cases with zero alarms
+built-in detector now catches 3/3 published file-read cases with zero alarms
 on the standing reference/fixed cases. User-supplied rules need their own
 vulnerable, fixed and reference evaluation.

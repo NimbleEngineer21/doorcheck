@@ -27,6 +27,25 @@ def integration(root: Path, name: str, code: str = "pass\n") -> Path:
     return folder
 
 
+def helper_control(root: Path, domain: str, expression: str) -> None:
+    folder = integration(
+        root,
+        domain,
+        "from homeassistant.components.http import HomeAssistantView\n"
+        f"from custom_components.{domain}.reader import read\n"
+        "from homeassistant.util import sanitize_path\n"
+        "raise RuntimeError('Never import this inert control')\n"
+        "class Files(HomeAssistantView):\n    requires_auth = False\n"
+        "    url = '/files/{filename:.*}'\n"
+        "    async def get(self, request, filename):\n"
+        f"        return read({expression})\n",
+    )
+    (folder / "reader.py").write_text(
+        "from aiohttp import web\nraise RuntimeError('Never import this inert control')\n"
+        "def read(path):\n    if exists(path):\n        return web.FileResponse(path)\n"
+    )
+
+
 def prepare(config: Path, source: Path, cache: Path) -> dict[str, str]:
     root = config / "custom_components"
     root.mkdir()
@@ -48,6 +67,8 @@ class Files(HomeAssistantView):
         return web.FileResponse(filename)
 """,
     )
+    helper_control(root, "dc_helpers", "filename")
+    helper_control(root, "dc_helpers_fixed", "sanitize_path(filename)")
     integration(root, "dc_broken", "syntax invalid !")
     oversized = integration(root, "dc_oversized")
     (oversized / "large").write_bytes(b"x" * (2 * 1024 * 1024))

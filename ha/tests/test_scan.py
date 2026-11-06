@@ -1,11 +1,15 @@
 """Snapshot boundaries and real engine results, without candidate execution."""
 
+import hashlib
+import importlib.util
 import os
+import py_compile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from doorcheck.checks import Status
+from doorcheck.fetch import tree_digest
 from doorcheck.report import from_dict, to_dict
 
 from custom_components.doorcheck import scan
@@ -19,7 +23,7 @@ def source(tmp_path: Path) -> tuple[Path, Path]:
 
 
 def failed(root: Path) -> None:
-    result = scan.scan_integration(root, "example")
+    result = scan.scan_integration(root, "example").report
     assert result.target.name == "example"
     assert result.capabilities == result.findings == ()
     assert len(result.checks) == 1
@@ -58,7 +62,8 @@ def test_scan_uses_engine_and_removes_private_snapshot(tmp_path: Path) -> None:
         patch.object(scan.capabilities, "scan", side_effect=observe),
         patch.object(scan.rules, "scan", side_effect=detect),
     ):
-        result = scan.scan_integration(root, "example")
+        scanned = scan.scan_integration(root, "example")
+    result = scanned.report
     assert not snapshots[0].exists()
     assert all(c.status is Status.COMPLETE for c in result.checks)
     assert {c.name for c in result.checks} == {"snapshot", "capabilities", "python-rules"}
@@ -66,7 +71,14 @@ def test_scan_uses_engine_and_removes_private_snapshot(tmp_path: Path) -> None:
         c.kind.value == "process" and c.location.path == "nested/code.py"
         for c in result.capabilities
     )
-    assert result.target.version is result.target.commit is result.target.artifact_sha256 is None
+    assert result.target.version is result.target.commit is None
+    # The same digest as the engine's installed-file digest of the live folder.
+    assert result.target.artifact_sha256 == tree_digest(selected)
+    assert scanned.files == {
+        "manifest.json": hashlib.sha256((selected / "manifest.json").read_bytes()).hexdigest(),
+        "nested/code.py": hashlib.sha256((nested / "code.py").read_bytes()).hexdigest(),
+    }
+    assert scanned.bytecode == {}
     assert from_dict(to_dict(result)) == result
 
 
@@ -116,7 +128,7 @@ def test_empty_tree_deadline_is_checked(tmp_path: Path) -> None:
 def test_scan_preserves_engine_coverage_gaps(tmp_path: Path) -> None:
     root, selected = source(tmp_path)
     (selected / "bad.py").write_bytes(b"\xff")
-    result = scan.scan_integration(root, "example")
+    result = scan.scan_integration(root, "example").report
     assert {c.name: c.status for c in result.checks} == {
         "snapshot": Status.COMPLETE,
         "capabilities": Status.PARTIAL,
@@ -153,10 +165,10 @@ def test_file_replaced_with_fifo_before_open_fails_without_blocking(tmp_path: Pa
     path.write_text("pass")
     original = scan._file
 
-    def raced(parent, name, destination, budget):
+    def raced(parent, name, destination, budget, relative):
         path.unlink()
         os.mkfifo(path)
-        original(parent, name, destination, budget)
+        original(parent, name, destination, budget, relative)
 
     with patch.object(scan, "_file", side_effect=raced):
         failed(root)
@@ -168,7 +180,8 @@ def test_entry_budget_accepts_boundary_then_stops(tmp_path: Path) -> None:
         (selected / name).write_bytes(b"")
     with patch.object(scan, "MAX_ENTRIES", 2):
         assert all(
-            c.status is Status.COMPLETE for c in scan.scan_integration(root, "example").checks
+            c.status is Status.COMPLETE
+            for c in scan.scan_integration(root, "example").report.checks
         )
         (selected / "c").write_bytes(b"")
         failed(root)
@@ -187,7 +200,8 @@ def test_size_budgets_accept_exact_boundary_and_count_all_files(tmp_path: Path) 
     (selected / "b").write_bytes(b"5678")
     with patch.object(scan, "MAX_FILE_BYTES", 4), patch.object(scan, "MAX_BYTES", 8):
         assert all(
-            c.status is Status.COMPLETE for c in scan.scan_integration(root, "example").checks
+            c.status is Status.COMPLETE
+            for c in scan.scan_integration(root, "example").report.checks
         )
         (selected / "c").write_bytes(b"9")
         failed(root)
@@ -200,7 +214,8 @@ def test_copy_accepts_exact_depth_boundary(tmp_path: Path) -> None:
     (selected / "a/b").mkdir(parents=True)
     with patch.object(scan, "MAX_DEPTH", 2):
         assert all(
-            c.status is Status.COMPLETE for c in scan.scan_integration(root, "example").checks
+            c.status is Status.COMPLETE
+            for c in scan.scan_integration(root, "example").report.checks
         )
         (selected / "a/b/c").mkdir()
         failed(root)
@@ -214,10 +229,10 @@ def test_raced_file_link_is_not_followed(tmp_path: Path) -> None:
     secret.write_text("import os")
     original = scan._file
 
-    def raced(parent, name, destination, budget):
+    def raced(parent, name, destination, budget, relative):
         path.unlink()
         path.symlink_to(secret)
-        original(parent, name, destination, budget)
+        original(parent, name, destination, budget, relative)
 
     with patch.object(scan, "_file", side_effect=raced):
         failed(root)
@@ -237,7 +252,7 @@ def test_renamed_selected_parent_keeps_original_descriptor(tmp_path: Path) -> No
         original(parent, destination, budget, depth)
 
     with patch.object(scan, "_copy", side_effect=raced):
-        result = scan.scan_integration(root, "example")
+        result = scan.scan_integration(root, "example").report
     assert all(c.status is Status.COMPLETE for c in result.checks)
     assert result.capabilities[0].subject == "subprocess"
 
@@ -269,7 +284,7 @@ def test_snapshot_read_has_a_bounded_overflow_sentinel(tmp_path: Path) -> None:
 
     destination = tmp_path / "copied"
     with patch.object(scan.os, "fdopen", new=opened), scan._directory(selected) as parent:
-        scan._file(parent, "data", destination, scan.Budget(float("inf")))
+        scan._file(parent, "data", destination, scan.Budget(float("inf")), "data")
     assert destination.read_bytes() == b"abc"
 
 
@@ -283,7 +298,7 @@ class Files(HomeAssistantView):
     async def get(self, request, filename):
         return web.FileResponse(filename)
 """)
-    result = scan.scan_integration(root, "example")
+    result = scan.scan_integration(root, "example").report
     assert len(result.findings) == 1
     finding = result.findings[0]
     assert finding.rule_id == "ha-unauth-view-unsanitized-path"
@@ -295,9 +310,200 @@ class Files(HomeAssistantView):
 def test_representative_source_above_old_snapshot_cap_is_scanned(tmp_path: Path) -> None:
     root, selected = source(tmp_path)
     (selected / "code.py").write_text("pass\n" * 30_000)
-    result = scan.scan_integration(root, "example")
+    result = scan.scan_integration(root, "example").report
     assert {check.name: check.status for check in result.checks} == {
         "snapshot": Status.COMPLETE,
         "capabilities": Status.COMPLETE,
         "python-rules": Status.COMPLETE,
     }
+
+
+@pytest.mark.parametrize("argument,count", [("filename", 1), ("sanitize_path(filename)", 0)])
+def test_selected_snapshot_resolves_local_helpers_without_import(tmp_path, argument, count):
+    root, selected = source(tmp_path)
+    (selected / "manifest.json").write_text('{"domain":"example"}')
+    (selected / "__init__.py").write_text(
+        "from homeassistant.components.http import HomeAssistantView\n"
+        "from custom_components.example.reader import read\n"
+        "from homeassistant.util import sanitize_path\n"
+        "raise RuntimeError('Never execute')\n"
+        "class Files(HomeAssistantView):\n    requires_auth = False\n"
+        "    url = '/files/{filename:.*}'\n"
+        "    async def get(self, request, filename):\n"
+        f"        return read({argument})\n"
+    )
+    (selected / "reader.py").write_text(
+        "from aiohttp import web\nraise RuntimeError('Never execute')\n"
+        "def read(path):\n    return web.FileResponse(path)\n"
+    )
+    report = scan.scan_integration(root, "example").report
+    assert all(check.status is Status.COMPLETE for check in report.checks)
+    assert len(report.findings) == count
+    if count:
+        assert report.findings[0].location.line == 9
+        assert report.findings[0].params["sink_path"] == "reader.py"
+
+
+def test_bytecode_is_recorded_apart_from_the_source_digest(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    (selected / "code.py").write_text("VALUE = 1\n")
+    clean = scan.scan_integration(root, "example")
+    cache = selected / "__pycache__"
+    cache.mkdir()
+    (cache / "code.cpython-314.pyc").write_bytes(compiled())
+    (cache / "notes.txt").write_text("not bytecode")
+    loaded = scan.scan_integration(root, "example")
+    assert loaded.bytecode == {
+        "__pycache__/code.cpython-314.pyc": hashlib.sha256(compiled()).hexdigest()
+    }
+    assert "__pycache__/notes.txt" in loaded.files
+    assert "__pycache__/code.cpython-314.pyc" not in loaded.files
+    (cache / "notes.txt").unlink()
+    after_load = scan.scan_integration(root, "example")
+    assert after_load.report.target.artifact_sha256 == clean.report.target.artifact_sha256
+    assert after_load.files == clean.files
+
+
+def compiled(flags: int = 0, body: bytes = b"code") -> bytes:
+    """A PEP 552 header (magic, flags, 8 check bytes) and a body."""
+    return importlib.util.MAGIC_NUMBER + flags.to_bytes(4, "little") + bytes(8) + body
+
+
+def shipped(result: scan.Scan) -> list[str]:
+    return [c.location.path for c in result.report.capabilities if c.kind.value == "shipped_binary"]
+
+
+def test_interpreter_written_bytecode_is_hashed_but_not_scanned(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    (selected / "pkg").mkdir()
+    (selected / "pkg/code.py").write_text("VALUE = 1\n")
+    (selected / "loose.pyc").write_bytes(b"sourceless")
+    clean = scan.scan_integration(root, "example")
+    # Real interpreter output in both modes that check the source.
+    timestamp = importlib.util.cache_from_source(str(selected / "pkg/code.py"))
+    checked = importlib.util.cache_from_source(str(selected / "pkg/code.py"), optimization=1)
+    for cfile, mode in (
+        (timestamp, py_compile.PycInvalidationMode.TIMESTAMP),
+        (checked, py_compile.PycInvalidationMode.CHECKED_HASH),
+    ):
+        py_compile.compile(
+            str(selected / "pkg/code.py"), cfile, doraise=True, invalidation_mode=mode
+        )
+    (selected / "pkg/__pycache__/notes.txt").write_text("not bytecode")
+    loaded = scan.scan_integration(root, "example")
+    assert shipped(loaded) == ["loose.pyc"]
+    assert loaded.report.capabilities == clean.report.capabilities
+    assert loaded.report.checks == clean.report.checks
+    assert len(loaded.bytecode) == 2
+    assert "pkg/__pycache__/notes.txt" in loaded.files
+
+
+def test_bytecode_that_python_would_not_check_is_scanned(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    (selected / "code.py").write_text("VALUE = 1\n")
+    cfile = importlib.util.cache_from_source(str(selected / "code.py"))
+    py_compile.compile(
+        str(selected / "code.py"),
+        cfile,
+        doraise=True,
+        invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH,
+    )
+    (selected / "__pycache__/other.cpython-314.pyc").write_bytes(b"\x7fELF compiled")
+    loaded = scan.scan_integration(root, "example")
+    relative = Path(cfile).relative_to(selected).as_posix()
+    # Still listed with the bytecode hashes, and also reported by the engine.
+    assert shipped(loaded) == sorted([relative, "__pycache__/other.cpython-314.pyc"])
+    assert set(loaded.bytecode) == {relative, "__pycache__/other.cpython-314.pyc"}
+    assert relative not in loaded.files
+
+
+SOURCES = {"code.py": "h", "pkg/code.py": "h", "a/b/code.py": "h"}
+
+
+@pytest.mark.parametrize(
+    ("relative", "data", "expected"),
+    [
+        ("__pycache__/code.cpython-314.pyc", compiled(0), True),
+        ("__pycache__/code.cpython-314.pyc", compiled(3), True),
+        ("__pycache__/code.cpython-314.opt-1.pyc", compiled(0), True),
+        ("__pycache__/code.cpython-313t.opt-2.pyc", compiled(0), True),
+        ("pkg/__pycache__/code.cpython-314.pyc", compiled(0), True),
+        ("a/b/__pycache__/code.cpython-314.pyc", compiled(0), True),
+        ("__pycache__/code.cpython-314.pyc", compiled(0, b""), True),
+        # Python loads an unchecked-hash file with no source check.
+        ("__pycache__/code.cpython-314.pyc", compiled(1), False),
+        # Python refuses other flag values; these are not interpreter output.
+        ("__pycache__/code.cpython-314.pyc", compiled(2), False),
+        ("__pycache__/code.cpython-314.pyc", compiled(4), False),
+        ("__pycache__/code.cpython-314.pyc", compiled(0)[:15], False),
+        ("__pycache__/code.cpython-314.pyc", b"\x7fELF" + compiled(0)[4:], False),
+        ("__pycache__/code.cpython-314.pyc", b"\x00\x00\n\r" + compiled(0)[4:], False),
+        # The name, folder and source must be the ones Python writes and reads.
+        ("__pycache__/code.pyc", compiled(0), False),
+        ("__pycache__/code.cpython-314.opt-3.pyc", compiled(0), False),
+        ("__pycache__/code.cpython-314.extra.pyc", compiled(0), False),
+        ("__pycache__/missing.cpython-314.pyc", compiled(0), False),
+        ("__pycache__/sub/code.cpython-314.pyc", compiled(0), False),
+        ("b/__pycache__/code.cpython-314.pyc", compiled(0), False),
+        ("x/b/__pycache__/code.cpython-314.pyc", compiled(0), False),
+    ],
+)
+def test_interpreter_shaped_bytecode(relative: str, data: bytes, expected: bool) -> None:
+    assert scan.interpreter_shaped(relative, data, SOURCES) is expected
+
+
+def test_bytecode_counts_toward_snapshot_limits(tmp_path: Path) -> None:
+    root, selected = source(tmp_path)
+    cache = selected / "__pycache__"
+    cache.mkdir()
+    (cache / "a.pyc").write_bytes(b"1234")
+    with patch.object(scan, "MAX_ENTRIES", 2), patch.object(scan, "MAX_BYTES", 4):
+        assert scan.scan_integration(root, "example").bytecode
+        (cache / "b.pyc").write_bytes(b"5")
+        failed(root)
+    with patch.object(scan, "MAX_FILE_BYTES", 3):
+        failed(root)
+
+
+@pytest.mark.parametrize(
+    ("relative", "expected"),
+    [
+        ("__pycache__/a.cpython-314.pyc", True),
+        ("pkg/__pycache__/a.pyc", True),
+        ("__pycache__/a.py", False),
+        ("a.pyc", False),
+        ("__pycache__.pyc", False),
+        ("pkg/__pycache__x/a.pyc", False),
+    ],
+)
+def test_only_pyc_files_in_cache_folders_are_bytecode(relative: str, expected: bool) -> None:
+    assert scan.is_bytecode(relative) is expected
+
+
+@pytest.mark.parametrize(
+    ("manifest", "expected"),
+    [
+        ('{"version": "2.1.0"}', "2.1.0"),
+        ('{"version": " "}', None),
+        ('{"version": 2}', None),
+        ("[]", None),
+        ("not json", None),
+        (None, None),
+    ],
+)
+def test_manifest_version_names_the_target(tmp_path: Path, manifest, expected) -> None:
+    root, selected = source(tmp_path)
+    if manifest is not None:
+        (selected / "manifest.json").write_text(manifest)
+    assert scan.scan_integration(root, "example").report.target.version == expected
+
+
+def test_failed_snapshot_has_no_identity(tmp_path: Path) -> None:
+    root, _ = source(tmp_path)
+    result = scan.scan_integration(root, "missing")
+    assert result.report.target == scan.Target("missing")
+    assert result.files == result.bytecode == {}
+
+
+def test_source_digest_matches_the_engine_for_an_empty_folder(tmp_path: Path) -> None:
+    assert scan.source_digest({}) == tree_digest(tmp_path)

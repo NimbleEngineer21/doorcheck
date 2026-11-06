@@ -5,34 +5,15 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from doorcheck.checks import Status
 from doorcheck.cli_output import report_body, single_line
 from doorcheck.cli_report import exit_code, read_report
-from doorcheck.comparison import Comparison, compare
+from doorcheck.comparison import Comparison, comparability, compare
 from doorcheck.messages import render
 from doorcheck.report import Report, to_dict
 
 
 def metadata_matches(change: Comparison) -> bool:
-    before, after = change.before, change.after
-    if (
-        before.target.name != after.target.name
-        or before.doorcheck_version != after.doorcheck_version
-    ):
-        return False
-    checks_before = [(check.name, check.version) for check in before.checks]
-    checks_after = [(check.name, check.version) for check in after.checks]
-    return checks_before == checks_after and _complete(before) and _complete(after)
-
-
-def _complete(report: Report) -> bool:
-    return (
-        bool(report.doorcheck_version.strip())
-        and bool(report.checks)
-        and all(
-            check.status is Status.COMPLETE and check.version.strip() for check in report.checks
-        )
-    )
+    return comparability(change.before, change.after).matches
 
 
 def _projections(change: Comparison) -> tuple[Report, Report]:
@@ -73,13 +54,14 @@ def _versions(report: Report) -> str:
 
 def human_comparison(change: Comparison) -> str:
     added, removed = _projections(change)
-    status = (
-        render("cli.compare_matched") if metadata_matches(change) else render("cli.compare_limited")
-    )
+    limits = comparability(change.before, change.after).limits
+    status = render("cli.compare_limited") if limits else render("cli.compare_matched")
+    reasons = [render("comparison." + limit.value) for limit in limits]
     return "\n".join(
         [
             render("cli.compare_scope"),
             status,
+            *reasons,
             render("cli.compare_removed"),
             _versions(removed) + report_body(removed),
             render("cli.compare_added"),

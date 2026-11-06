@@ -15,7 +15,7 @@ on:
       max_characters:
         description: Explicit upper character ceiling for this run
         required: true
-        default: 20000
+        default: 25000
         type: number
       free_api:
         description: Use the DeepL API Free endpoint

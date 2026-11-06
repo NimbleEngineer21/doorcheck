@@ -6,8 +6,9 @@ import pytest
 
 from doorcheck.capabilities.model import Capability, Kind
 from doorcheck.checks import Check, Problem, Status
-from doorcheck.comparison import Changes, compare
+from doorcheck.comparison import Changes, Comparability, Limit, comparability, compare
 from doorcheck.findings import Confidence, Location, Severity
+from doorcheck.messages import render
 from doorcheck.report import Report, Target, from_dict, to_dict
 from tests.conftest import make_finding
 
@@ -249,3 +250,106 @@ def test_empty_and_missing_evidence_ties_are_deterministic() -> None:
         == compare(baseline, reverse).findings
         == Changes((empty, absent), ())
     )
+
+
+COMPLETE = Check("source", "1", Status.COMPLETE)
+GAP = (Problem("problem.tool_failed"),)
+
+
+def checked(**change) -> Report:
+    return replace(report(checks=(COMPLETE,)), **change)
+
+
+def test_matching_complete_reports_have_no_limits() -> None:
+    result = comparability(checked(), checked(target=Target("demo", "2", "c" * 40)))
+    assert result == Comparability((), None)
+    assert result.matches
+    with pytest.raises(FrozenInstanceError):
+        result.limits = (Limit.CHECKS,)
+
+
+@pytest.mark.parametrize(
+    ("change", "limit"),
+    [
+        ({"target": Target("other", "1")}, Limit.TARGET_NAME),
+        ({"doorcheck_version": "0.2.0"}, Limit.ENGINE_VERSION),
+        ({"checks": (Check("other", "1", Status.COMPLETE),)}, Limit.CHECKS),
+        ({"checks": (Check("source", "2", Status.COMPLETE),)}, Limit.CHECKS),
+        ({"checks": (COMPLETE, Check("extra", "1", Status.COMPLETE))}, Limit.CHECKS),
+    ],
+)
+def test_each_metadata_difference_is_its_own_limit(change, limit: Limit) -> None:
+    result = comparability(checked(), checked(**change))
+    assert result.limits == (limit,)
+    assert not result.matches
+
+
+def test_check_order_given_by_the_producer_is_not_a_limit() -> None:
+    extra = Check("extra", "1", Status.COMPLETE)
+    result = comparability(checked(checks=(COMPLETE, extra)), checked(checks=(extra, COMPLETE)))
+    assert result.limits == ()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"checks": ()},
+        {"checks": (Check("source", "1", Status.PARTIAL, GAP),)},
+        {"checks": (Check("source", "1", Status.FAILED, GAP),)},
+        {"checks": (Check("source", "1", Status.NOTHING_TO_SCAN),)},
+        {"checks": (COMPLETE, Check("extra", "1", Status.PARTIAL, GAP))},
+        {"checks": (Check("source", "", Status.COMPLETE),)},
+        {"checks": (Check("source", " ", Status.COMPLETE),)},
+        {"doorcheck_version": ""},
+        {"doorcheck_version": " "},
+    ],
+)
+@pytest.mark.parametrize("side", ["before", "after"])
+def test_incomplete_coverage_is_named_by_side(change, side: str) -> None:
+    limited = checked(**change)
+    before, after = (limited, checked()) if side == "before" else (checked(), limited)
+    sides = {"before": Limit.BEFORE_INCOMPLETE, "after": Limit.AFTER_INCOMPLETE}
+    limits = comparability(before, after).limits
+    assert sides.pop(side) in limits
+    assert sides.popitem()[1] not in limits
+
+
+def test_incomplete_reports_on_both_sides_name_both() -> None:
+    gap = checked(checks=(Check("source", "1", Status.FAILED, GAP),))
+    assert comparability(gap, gap).limits == (Limit.BEFORE_INCOMPLETE, Limit.AFTER_INCOMPLETE)
+
+
+def test_limits_keep_a_fixed_order_and_every_reason_is_listed() -> None:
+    before = checked(checks=())
+    after = checked(
+        target=Target("other"),
+        doorcheck_version="0.2.0",
+        checks=(Check("source", "1", Status.FAILED, GAP),),
+    )
+    assert comparability(before, after).limits == tuple(Limit)
+    assert comparability(after, before).limits == tuple(Limit)
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "same"),
+    [
+        ("a" * 64, "a" * 64, True),
+        ("a" * 64, "b" * 64, False),
+        (None, "a" * 64, None),
+        ("a" * 64, None, None),
+        (None, None, None),
+    ],
+)
+def test_artifact_digests_are_compared_only_when_both_are_recorded(
+    before: str | None, after: str | None, same: bool | None
+) -> None:
+    old = checked(target=Target("demo", "1", None, before))
+    new = checked(target=Target("demo", "2", None, after))
+    result = comparability(old, new)
+    assert result.same_artifact is same
+    assert result.limits == ()
+
+
+def test_limit_messages_exist_for_every_reason() -> None:
+    for limit in Limit:
+        assert render("comparison." + limit.value)

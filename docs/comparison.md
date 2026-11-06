@@ -67,6 +67,39 @@ as an update, inspect both targets, check sets, versions, statuses and problems.
 A failed, partial, absent or nothing-to-scan check cannot establish removal.
 Empty change lists make no claim of complete coverage or safety.
 
+## Comparability limits
+
+`doorcheck.comparison.comparability(before, after)` reads the same declared
+metadata as the command-line policy below and says which parts limit the
+comparison. It performs no I/O and returns a frozen `Comparability` record.
+
+```python
+from doorcheck.comparison import comparability
+
+result = comparability(before, after)
+result.matches  # True only when there are no limits
+result.limits  # tuple of Limit values, in a fixed order
+result.same_artifact  # True, False, or None when a digest is not recorded
+```
+
+Each `Limit` has a catalog message `comparison.<value>`:
+
+| Limit | Meaning |
+| --- | --- |
+| `target_name` | The reports name different targets. |
+| `engine_version` | The reports come from different Doorcheck versions. |
+| `checks` | The check name/version lists differ. Reports sort checks by name, so producer order does not matter. |
+| `before_incomplete` | The before report has no checks, a blank engine or check version, or a check that is not complete. An addition may not be new. |
+| `after_incomplete` | The same for the after report. A removal may still be present. |
+
+Several limits can apply at once, and all of them are listed. Target version
+and commit changes are expected in an update and are not limits.
+`same_artifact` compares the targets' installed-file SHA-256 values only when
+both reports record one. Equal values mean that both reports declare the same
+installed files; they do not verify that either report is authentic. No limit, and no
+combination of results, is a statement that a target is safe or that a
+problem was fixed.
+
 Differences are limited to the observations already in the reports, including
 clipped subjects and evidence, computed values, fingerprint behavior and scanner
 blind spots. There is no raw-source diff or runtime-traffic measurement. New
@@ -90,9 +123,10 @@ These are selected source snapshots, not claims about separate release assets.
 For HACS, manifest requirements change: three dependency observations are added;
 three dependency observations and one outside-PyPI requirement observation are
 removed. The latter is the original malformed `fnvhash>=0.1.0<1.0.0` requirement,
-not a newly inferred dependency issue. The existing rule's helper-flow miss is
-unchanged: neither HACS source snapshot produces a file-read finding, so there
-is no finding removal to report.
+not a newly inferred dependency issue. These saved-report examples predate
+helper tracing: neither archived HACS report contains a file-read finding.
+New scans now catch the vulnerable HACS case; see the [current rule evidence](rules.md).
+Comparing an existing report does not rerun detection.
 
 Font Awesome removes the existing finding at
 `fontawesome/custom_component_server.py:19`. Its three capability observations
@@ -101,9 +135,8 @@ still match despite the source fix. Dwains removes the existing finding at
 separate file-path subject changes from `lovelace/themes` to
 `lovelace/themefiles`, producing one removal and one addition.
 
-These counts describe existing observations. Detection remains at 2/3 published
-file-read cases caught and zero alarms on the reference/fixed corpus. Comparing
-reports does not add detection coverage or establish that an update is safe.
+These counts describe the saved observations. Comparing reports does not add
+detection coverage or establish that an update is safe.
 
 ## Compare saved reports from the command line
 
@@ -126,8 +159,10 @@ unknown message keys and missing message parameters are refused. Excessive
 nesting and invalid encoding produce a catalog error on stderr, no comparison
 on stdout, and exit code 2. The byte cap is not a command-wide time limit.
 
-Text puts removed observations under the before report and additions under the
-after report. Each side includes its target metadata, engine/check versions,
+Text starts with the scope line and the metadata status. A limited status is
+followed by one catalog line for each limit, in the order above. Text then puts
+removed observations under the before report and additions under the after
+report. Each side includes its target metadata, engine/check versions,
 check statuses and coverage problems. Changed findings retain their original
 severity words. Source fields, including check names and input-error paths, use
 safe single-line rendering; they cannot add terminal rows or control sequences.
@@ -143,7 +178,8 @@ the change arrays are not standalone scan reports. Non-ASCII text and terminal
 controls are JSON-escaped on stdout. Parsed data still needs safe rendering, and
 both scan and comparison files can contain source evidence: review before sharing.
 
-`metadata_matches` is true only when target names and Doorcheck versions match,
+`metadata_matches` is `comparability(before, after).matches`. It is true only
+when target names and Doorcheck versions match,
 check name/version sets match, both sides have at least one check, all checks
 are complete, and engine/check versions are nonblank. Target version, commit
 and digest changes are expected and do not make this flag false. This tests
@@ -183,4 +219,4 @@ metadata and complete checks; the inputs were not rescanned by the command.
 
 The reverse Font Awesome comparison adds the existing Review finding at line 19.
 The forward comparison reports its removal without claiming a fix. The HACS
-helper-flow miss remains visible in the source-evidence discussion above.
+row describes the archived reports above, before helper tracing was added.

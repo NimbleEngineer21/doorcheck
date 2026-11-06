@@ -112,6 +112,6 @@ recognized request. They are ordinary observations, not findings about projects:
 To reproduce, use the existing pinned-corpus fetcher, scan the same target
 selection, build a report from the capabilities/checks, then call `summarize`.
 The CLI form accepts a saved `scan --json` report. The existing full 78-case
-rule benchmark remains at 2/3 published file-read catches with zero
-reference/fixed alarms; the HACS helper-flow miss remains. This feature does
-not complete cross-language host extraction, purpose labeling or domain grouping.
+rule benchmark now reports 3/3 published file-read catches with zero
+reference/fixed alarms; see the [helper tracing evidence](rules.md).
+This feature does not complete cross-language host extraction, purpose labeling or domain grouping.

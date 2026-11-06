@@ -5,3 +5,20 @@ scan_integration:
       required: true
       selector:
         text: {}
+get_results:
+  fields:
+    directory:
+      required: true
+      selector:
+        text: {}
+mark_reviewed:
+  fields:
+    directory:
+      required: true
+      selector:
+        text: {}
+    scan_id:
+      required: true
+      selector:
+        text: {}
+clear_results: {}

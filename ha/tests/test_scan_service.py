@@ -125,6 +125,9 @@ async def test_cancelled_caller_retains_single_worker_slot(
 ) -> None:
     await loaded(hass)
     hass.config.config_dir = str(tmp_path)
+    # A folder that exists but cannot be copied: the failed scan is still saved.
+    (tmp_path / "custom_components/example").mkdir(parents=True)
+    (tmp_path / "custom_components/example/data").symlink_to("/etc/hosts")
     entered, release = threading.Event(), threading.Event()
     original = services.scan_integration
 
@@ -133,19 +136,7 @@ async def test_cancelled_caller_retains_single_worker_slot(
         assert release.wait(10)
         return original(root, directory)
 
-    futures = []
-    executor = hass.async_add_executor_job
-
-    def submit(target, *args):
-        future = executor(target, *args)
-        if target is services._scan_response:
-            futures.append(future)
-        return future
-
-    with (
-        patch.object(services, "scan_integration", new=blocked),
-        patch.object(hass, "async_add_executor_job", new=submit),
-    ):
+    with patch.object(services, "scan_integration", new=blocked):
         task = asyncio.create_task(invoke(hass))
         try:
             assert await hass.async_add_executor_job(entered.wait, 5)
@@ -162,8 +153,10 @@ async def test_cancelled_caller_retains_single_worker_slot(
             assert busy.value.translation_domain == DOMAIN
         finally:
             release.set()
-            await futures[0]
             await hass.async_block_till_done()
+    # The scan whose caller left still finished and was saved.
+    saved = hass.config_entries.async_loaded_entries(DOMAIN)[0].runtime_data.results
+    assert saved.items["example"].latest.report.checks[0].name == "snapshot"
     result = await invoke(hass)
     assert result["report"]["checks"][0]["status"] == "failed"
 
