@@ -74,5 +74,6 @@ Framework tests do not replace real-instance acceptance or distribution and
 self-revocation prerequisites; see [development setup](home-assistant-development.md).
 
 The [admin results panel](ha-panel.md) provides a directory picker and explicit
-scan button over this action. It renders findings, capabilities and coverage gaps.
-The panel itself does not yet show saved results.
+scan button over this action. It renders findings, capabilities and coverage gaps,
+and opens each integration on its saved result and the changes since the reviewed
+scan.

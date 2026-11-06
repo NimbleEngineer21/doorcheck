@@ -31,9 +31,34 @@ These files are hashed and saved apart from the source files, and they are not
 part of `artifact_sha256`. Leaving them in would report a change after every
 first load; dropping them would hide a planted `.pyc` file, which Python can
 load in place of its source. Other files in a `__pycache__` folder count as
-source. Bytecode files are still scanned: the capability reader reports each
-`.pyc` file as a shipped binary, so a scan after first load can list
-capabilities that a fresh copy does not.
+source. Bytecode files are read, hashed and counted toward the snapshot limits.
+Each saved scan lists its bytecode paths, and the comparison lists bytecode
+files that were added, removed or changed.
+
+A bytecode file that has the shape Python writes for itself is not copied into
+the private copy that the engine scans, so a scan after first load lists the
+same capabilities as a fresh copy. The file has that shape when all of these
+are true:
+
+- It is directly in a `__pycache__` folder, and its name is
+  `<module>.<cache tag>.pyc` or `<module>.<cache tag>.opt-1.pyc` (or `opt-2`).
+- The source file `<module>.py` is in the parent folder.
+- Its 16-byte header has a magic number that ends in `\r\n`, and flags `0`
+  (Python checks the source time and size) or `3` (Python checks a source hash).
+
+Any other bytecode file is copied, and the engine reports it as a shipped
+binary. This includes an unchecked-hash file (flags `1`), which Python loads
+with no source check, a file with no source, and a file that is not bytecode.
+The check reads only the name and the header. It does not prove that the code
+was compiled from the source: a planted file with a forged time-checked or
+hash-checked header passes, and only its path and hash show it. A `.pyc` file
+outside a `__pycache__` folder, which Python can import without its source, is
+always reported as a shipped binary.
+
+A reviewed scan saved by an earlier development build can list
+`__pycache__/*.pyc` files as shipped-binary capabilities. Its first comparison
+with a newer scan shows them as capabilities no longer found. Mark the newer
+scan reviewed, or clear saved results, to start from the current behavior.
 
 A manifest version and a digest are declarations about the files that were
 copied. They do not establish where the files came from; origin stays `unknown`.
@@ -106,11 +131,24 @@ send it again to the reloaded entry.
   "saving": "on",
   "saved": true,
   "problems": [],
-  "latest": {"scan_id": "<64 hex>", "scanned_at": "2026-11-05T14:02:11+00:00", "report": {}},
-  "baseline": {"scan_id": "<64 hex>", "scanned_at": "2026-11-01T09:30:00+00:00", "report": {}},
+  "latest": {
+    "scan_id": "<64 hex>",
+    "scanned_at": "2026-11-05T14:02:11+00:00",
+    "bytecode": ["__pycache__/code.cpython-314.pyc"],
+    "report": {}
+  },
+  "baseline": {
+    "scan_id": "<64 hex>",
+    "scanned_at": "2026-11-01T09:30:00+00:00",
+    "bytecode": [],
+    "report": {}
+  },
   "comparison": {
+    "changed": true,
     "limits": [],
     "same_artifact": false,
+    "findings": {"added": [0], "removed": []},
+    "capabilities": {"added": [], "removed": [2]},
     "files": {"added": ["extra.py"], "removed": [], "changed": ["code.py"]},
     "bytecode": {"added": [], "removed": [], "changed": []}
   }
@@ -122,9 +160,17 @@ send it again to the reloaded entry.
 - `saved` says whether this exact latest result is in the store.
 - `baseline` is the reviewed scan from the store, or `null` when the store has
   none. A result that is not saved never shows itself as the reviewed scan.
+- `bytecode` lists the sorted paths of the interpreter bytecode files in each
+  scan. Their hashes are saved but not returned.
 - `comparison` uses the engine's [comparability limits](comparison.md#comparability-limits)
   between the reviewed and latest reports, and lists file paths whose hashes
   were added, removed or changed. It is `null` without a reviewed scan.
+- `findings` and `capabilities` in `comparison` give the engine's
+  [comparison](comparison.md) of the two reports as positions: `added` indexes
+  the latest report, `removed` indexes the reviewed report. Each item is sent
+  once, in its own report.
+- `changed` is `true` when any list has an entry or any limit applies: with a
+  limit, the two scans cannot be read as equal even when every list is empty.
 
 A changed file list or a different digest describes the copied files. It is not
 a finding and has no severity. A change can mean an update, a local edit or a
