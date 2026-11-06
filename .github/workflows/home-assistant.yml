@@ -90,7 +90,7 @@ jobs:
           persist-credentials: false
       - name: Validate integration metadata
         run: >-
-          docker run --rm --volume "$PWD/ha:/github/workspace:ro"
+          docker run --rm --volume "$PWD/custom_components:/github/workspace/custom_components:ro"
           ghcr.io/home-assistant/hassfest@sha256:a6a695921327230c07ba89ebbb48778737bc1dda30b00cb60c9276585687fc6d
 
   acceptance:

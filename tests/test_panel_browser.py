@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skipif(
     os.environ.get("DOORCHECK_VISUAL_BROWSER") != "1", reason="requires an installed Chrome browser"
 )
 ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "ha/custom_components/doorcheck/frontend"
+FRONTEND = ROOT / "custom_components/doorcheck/frontend"
 REVIEW_ERRORS = (
     "results_incomplete",
     "results_not_found",

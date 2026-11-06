@@ -57,7 +57,7 @@ exclude-newer = "3 days"
 
 [tool.uv.build-backend]
 # Only the package ships. Tests, fixtures and tooling never reach PyPI.
-source-exclude = ["tests", "tools", ".github", "ha"]
+source-exclude = ["tests", "tools", ".github", "ha", "custom_components"]
 
 [tool.ruff]
 target-version = "py313"
@@ -165,7 +165,7 @@ pytest_add_cli_args_test_selection = ["tests/"]
 also_copy = [
     "benchmark/", "tools/templates/", "tools/visual-check.js", "docs/",
     ".github/workflows/",
-    "ha/custom_components/doorcheck/",
+    "custom_components/doorcheck/",
 ]
 # Coverage of mutated copies is meaningless and would fail the threshold.
 pytest_add_cli_args = ["--no-cov"]

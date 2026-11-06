@@ -19,7 +19,7 @@ from doorcheck.messages import ENGLISH, MessageError, placeholders, render, rend
 def test_catalog_contains_every_literal_key_in_engine() -> None:
     keys = {
         node.value
-        for folder in ("src/doorcheck", "tools", "ha/custom_components")
+        for folder in ("src/doorcheck", "tools", "custom_components")
         for path in Path(folder).rglob("*.py")
         for node in ast.walk(ast.parse(path.read_text()))
         if isinstance(node, ast.Constant)
