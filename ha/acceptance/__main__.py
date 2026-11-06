@@ -11,10 +11,11 @@ import socket
 import sys
 import tempfile
 import zipfile
+from collections.abc import AsyncIterator
 from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import IO, Any
 
 import aiohttp
 
@@ -142,7 +143,18 @@ async def measured_scan(
     return report, metrics
 
 
-async def exercise(instance: Instance) -> Record:
+async def saved_results(instance: Instance, session: aiohttp.ClientSession) -> Any:
+    status, body = await instance.request(
+        session,
+        "POST",
+        "/api/services/doorcheck/get_results?return_response",
+        {"directory": "dc_acceptance"},
+    )
+    require(status == 200, "saved_results_response")
+    return body["service_response"]["results"]
+
+
+async def exercise(instance: Instance) -> tuple[Record, str, Any]:
     async with aiohttp.ClientSession(
         timeout=aiohttp.ClientTimeout(total=40), trust_env=False
     ) as session:
@@ -224,12 +236,28 @@ async def exercise(instance: Instance) -> Record:
             else:
                 checks[directory] = statuses.get("snapshot") == "complete"
         measurements.append(await disconnected_scan(instance, session))
-        status, _ = await instance.request(
-            session, "POST", f"/api/config/config_entries/entry/{entry}/reload", {}
-        )
-        require(status == 200, "native_reload")
-        status, _ = await instance.scan(session, "dc_acceptance")
-        require(status == 200, "scan_after_reload")
+        saved = await reloaded(instance, session, entry)
+    return {"measurements": measurements, "checks": checks}, entry, saved
+
+
+async def reloaded(instance: Instance, session: aiohttp.ClientSession, entry: str) -> Any:
+    """A scan after a native reload is saved; its saved view is compared after restart."""
+    status, _ = await instance.request(
+        session, "POST", f"/api/config/config_entries/entry/{entry}/reload", {}
+    )
+    require(status == 200, "native_reload")
+    status, _ = await instance.scan(session, "dc_acceptance")
+    require(status == 200, "scan_after_reload")
+    saved = await saved_results(instance, session)
+    require(saved is not None and saved["saved"] is True, "results_saved")
+    return saved
+
+
+async def restarted(instance: Instance, entry: str, saved: Any, store: Path) -> None:
+    async with aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=40), trust_env=False
+    ) as session:
+        require(await saved_results(instance, session) == saved, "results_after_restart")
         status, _ = await instance.request(
             session, "DELETE", f"/api/config/config_entries/entry/{entry}"
         )
@@ -240,7 +268,7 @@ async def exercise(instance: Instance) -> Record:
             instance, session, {"directory": "dc_acceptance"}, "inventory_not_configured"
         )
         await panel_removed(instance, session)
-    return {"measurements": measurements, "checks": checks}
+    require(not store.exists(), "results_removed_with_entry")
 
 
 async def panel_message(
@@ -401,6 +429,41 @@ async def disconnected_scan(instance: Instance, session: aiohttp.ClientSession) 
     }
 
 
+@contextlib.asynccontextmanager
+async def booted(
+    config: Path, environment: dict[str, str], log: IO[str], port: int, validation_status: int
+) -> AsyncIterator[Instance]:
+    """One HA process on the shared config; it is always gone on exit."""
+    child = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "acceptance.instance",
+        str(config),
+        env=environment,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=log,
+    )
+    try:
+        instance = Instance(child, port, validation_status)
+        ready = await instance.record()
+        require(ready["ready"], "normal_bootstrap")
+        instance.tokens = ready["tokens"]
+        yield instance
+    finally:
+        if child.returncode is None:
+            child.kill()
+            await child.wait()
+
+
+async def stopped(instance: Instance) -> Record:
+    final = await instance.command("stop")
+    await asyncio.wait_for(instance.child.wait(), 30)
+    require(instance.child.returncode == 0, "clean_shutdown")
+    require(not final["control_imported"], "candidate_not_imported")
+    return final
+
+
 def configure(config: Path) -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -439,42 +502,31 @@ async def run(
             "PYTHONPATH": f"{engine}:{source / 'ha'}",
             "TMPDIR": str(scan_tmp),
         }
+        tokens: list[str] = []
+        store = config / ".storage/doorcheck.results"
         with (workspace / "ha.log").open("w") as log:
-            child = await asyncio.create_subprocess_exec(
-                sys.executable,
-                "-m",
-                "acceptance.instance",
-                str(config),
-                env=environment,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=log,
-            )
-            instance = Instance(child, port, validation_status)
-            try:
-                ready = await instance.record()
-                require(ready["ready"], "normal_bootstrap")
-                instance.tokens = ready["tokens"]
-                result = await exercise(instance)
-                final = await instance.command("stop")
-                await asyncio.wait_for(child.wait(), 30)
-                require(child.returncode == 0, "clean_shutdown")
-                require(not final["control_imported"], "candidate_not_imported")
-                require(
-                    all(
-                        fingerprint(config / "custom_components" / name) == digest
-                        for name, digest in original.items()
-                    ),
-                    "installed_sources_unchanged",
-                )
-                require(not list(scan_tmp.iterdir()), "snapshot_cleanup")
-            finally:
-                if child.returncode is None:
-                    child.kill()
-                    await child.wait()
+            async with booted(config, environment, log, port, validation_status) as instance:
+                tokens.extend(instance.tokens.values())
+                result, entry, saved = await exercise(instance)
+                # The scan workload runs here, so these are the reported resources.
+                final = await stopped(instance)
+            # Saved results must be on disk and private before HA starts again.
+            require(store.exists() and not store.stat().st_mode & 0o077, "results_store_private")
+            async with booted(config, environment, log, port, validation_status) as instance:
+                tokens.extend(instance.tokens.values())
+                await restarted(instance, entry, saved, store)
+                await stopped(instance)
+        require(
+            all(
+                fingerprint(config / "custom_components" / name) == digest
+                for name, digest in original.items()
+            ),
+            "installed_sources_unchanged",
+        )
+        require(not list(scan_tmp.iterdir()), "snapshot_cleanup")
         result["checks"].update(CHECKS)
         require(
-            not any(token in json.dumps(result) for token in instance.tokens.values()),
+            not any(token in json.dumps(result) for token in tokens),
             "credential_redaction",
         )
         result["checks"].update(CHECKS)

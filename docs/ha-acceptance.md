@@ -58,7 +58,11 @@ retained for repeat runs.
 - A busy response while another scan runs; an authenticated API probe completing
   during that scan; disconnecting the client while work is in flight; retaining
   the worker slot until it finishes; and a subsequent successful scan.
+- A saved result after the last scan. The store file stays private on disk
+  while HA is stopped. A second HA process on the same configuration returns the
+  same saved result.
 - Native reload, removal and rejection of scans without a configured entry.
+  Removal, on the second process, deletes the saved-results store.
 - Unchanged selected source trees, no candidate imports and no leftover snapshots.
 
 A workload of 48 inert Python files also exercises the cooperative stage budgets.

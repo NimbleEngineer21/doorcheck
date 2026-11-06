@@ -19,12 +19,16 @@ It scans only that folder under HA's configured `custom_components` directory;
 it does not establish whether the integration is loaded or where it originated.
 
 The response contains `scope: custom_integration_snapshot`, `origin: unknown`,
-and `report`, the existing versioned Doorcheck JSON report. The target names the
-selected directory; version, commit and artifact digest remain unknown. All
+`report`, the existing versioned Doorcheck JSON report, and `results`, the
+[saved results](ha-baselines.md) for that directory. The target names the
+selected directory, the manifest version when declared and the installed-files
+SHA-256 of the scanned copy; the commit remains unknown. All
 engine findings, observations and coverage gaps are retained. Static observations
 are not proof of runtime behavior, and an empty findings list is not a safety
-verdict. No results are persisted or included in diagnostics. Source evidence in
-a response can contain sensitive data; treat exports accordingly.
+verdict. Results are saved in Home Assistant storage unless saving is turned
+off; see [Saved scan results](ha-baselines.md). Diagnostics include only saved
+result counts. Source evidence in a response can contain sensitive data; treat
+exports and backups accordingly.
 
 When building API clients, use WebSocket for structured validation errors across
 the supported HA versions. The pinned older HA REST implementations return HTTP
@@ -59,14 +63,16 @@ imported or executed. No external scanners, network calls or AI providers run.
 Only one scan worker can be active per HA instance. Concurrent requests receive
 a translated busy error. Cancelling a caller does not terminate a thread or free
 the slot: the bounded worker completes and cleans up before another scan can
-start. Unloading Doorcheck rejects new requests; an existing worker finishes.
+start. Unloading Doorcheck rejects new requests; an existing worker finishes,
+but its result is not saved.
 Setup, reload and inventory calls do not start scans. There are no background
-hooks, alerts or persistent reports in this slice.
+hooks or alerts in this slice. A caller that leaves early does not stop the
+scan; its result is still saved.
 
 This remains a development preview with an unpublished engine requirement.
 Framework tests do not replace real-instance acceptance or distribution and
 self-revocation prerequisites; see [development setup](home-assistant-development.md).
 
 The [admin results panel](ha-panel.md) provides a directory picker and explicit
-scan button over this action. It renders findings, capabilities and coverage gaps
-without storing reports on disk.
+scan button over this action. It renders findings, capabilities and coverage gaps.
+The panel itself does not yet show saved results.
