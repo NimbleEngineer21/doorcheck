@@ -38,6 +38,13 @@ jobs:
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - name: Require the tag to match every version
         run: uv run python -m tools.release check --tag "$GITHUB_REF_NAME"
+      # A release must pin the key that signs the live status file, with time left to re-sign.
+      - name: Require a valid signed status file
+        run: |
+          url="$(uv run python -c 'from doorcheck.revocation import URL; print(URL)')"
+          curl --fail --silent --show-error --proto '=https' --max-redirs 0 \
+            --max-filesize 65536 --output "$RUNNER_TEMP/status.json" "$url"
+          uv run python -m tools.revocation verify --file "$RUNNER_TEMP/status.json" --min-days 14
       - id: version
         name: Read the version
         run: |

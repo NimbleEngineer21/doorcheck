@@ -88,7 +88,8 @@ scanners are separate executables, not installed by this example.
 ## Install
 
 Version 0.1.0a1 is the first pre-release. [Install the pre-release](docs/install.md)
-describes the HACS steps and the PyPI package. It has no self-revocation yet.
+describes the HACS steps and the PyPI package. The integration checks daily for
+[withdrawn versions](docs/ha-status.md) and shows them in Repairs; you can turn this off.
 
 ## Supported versions
 

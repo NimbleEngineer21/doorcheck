@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "This development preview provides custom integration inventory and on-demand static scans. Scan results are saved in Home Assistant storage until you clear them or turn saving off. It does not provide update alerts or establish safety."
+        "description": "This development preview provides custom integration inventory and on-demand static scans. Scan results are saved in Home Assistant storage until you clear them or turn saving off. Once a day it downloads a signed file from GitHub that lists withdrawn Doorcheck versions; you can turn this off in the options. It does not establish safety."
       }
     },
     "abort": {
@@ -14,9 +14,10 @@
   "options": {
     "step": {
       "init": {
-        "description": "Saved results keep the reviewed scan and the latest scan of each scanned integration in Home Assistant storage. Backups include them. Turning saving off deletes them.",
+        "description": "Saved results keep the reviewed scan and the latest scan of each scanned integration in Home Assistant storage. Backups include them. Turning saving off deletes them. The daily check downloads one signed file from GitHub that lists withdrawn Doorcheck versions. GitHub sees your IP address. Doorcheck sends nothing else about your system.",
         "data": {
-          "save_results": "Save scan results"
+          "save_results": "Save scan results",
+          "check_status": "Check daily for withdrawn Doorcheck versions"
         }
       }
     }
@@ -63,6 +64,16 @@
     "clear_results": {
       "name": "Clear saved scan results",
       "description": "Delete all saved Doorcheck scan results, including results that could not be read."
+    }
+  },
+  "issues": {
+    "revoked": {
+      "title": "Doorcheck {version} was withdrawn",
+      "description": "The Doorcheck maintainer withdrew version {version}. Read the advisory, then update or remove Doorcheck. Scans still run."
+    },
+    "status_unknown": {
+      "title": "Doorcheck cannot confirm that its version is still supported",
+      "description": "For more than 14 days, Doorcheck has not received a valid signed status file. It cannot tell if version {version} was withdrawn. Check the network connection of Home Assistant, or read the Doorcheck security advisories on GitHub. You can turn the daily check off in the Doorcheck options."
     }
   },
   "exceptions": {

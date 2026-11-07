@@ -107,5 +107,6 @@ fails if either reference snapshot fails, so reverting that change is observable
 
 This covers isolated HA Container startup and API behavior. It does not exercise
 a user's existing configuration, HA OS/Supervisor, a browser setup flow, every
-installation architecture or release installation. Distribution and self-revocation
-requirements remain separate from this development acceptance evidence.
+installation architecture or release installation. The containers have no network,
+so the withdrawn-version check only shows that setup succeeds without it; the
+framework tests cover the check itself.

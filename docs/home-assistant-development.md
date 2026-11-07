@@ -29,11 +29,14 @@ on every pull request. A `v*` tag must also equal `v<version>`; the
 [release workflow](../.github/workflows/release.yml) checks that, builds the
 wheel, sdist and integration ZIP once, runs the acceptance suite on that wheel,
 publishes after the maintainer approves the `pypi` environment, creates the
-GitHub pre-release, and installs and scans the published result. To change the
-version, edit those four places, then run `uv lock` in the root and in `ha/`.
+GitHub pre-release, and installs and scans the published result. Before it
+builds, it downloads the live [withdrawn-version file](ha-status.md) and requires
+`python -m tools.revocation verify --min-days 14` to pass with the pinned key. To
+change the version, edit those four places, then run `uv lock` in the root and in
+`ha/`.
 
-Self-revocation is not yet available. No HACS default-catalog submission is
-provided.
+The maintainer runs `python -m tools.revocation keygen` and `sign` offline; CI only
+verifies. No HACS default-catalog submission is provided.
 
 Only the library engine is a runtime requirement. Semgrep and other executable
 scanners remain outside the HA host integration. HA testing dependencies live in

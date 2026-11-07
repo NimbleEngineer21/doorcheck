@@ -1864,6 +1864,7 @@ requires-dist = [{ name = "packaging", specifier = ">=23.1" }]
 dev = [
     { name = "commitizen", specifier = "==4.19.3" },
     { name = "complexipy", specifier = "==8.3.0" },
+    { name = "cryptography", specifier = "==50.0.1" },
     { name = "import-linter", specifier = "==2.15" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "mutmut", specifier = "==3.8.1" },

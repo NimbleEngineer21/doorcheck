@@ -65,8 +65,9 @@ a translated busy error. Cancelling a caller does not terminate a thread or free
 the slot: the bounded worker completes and cleans up before another scan can
 start. Unloading Doorcheck rejects new requests; an existing worker finishes,
 but its result is not saved.
-Setup, reload and inventory calls do not start scans. There are no background
-hooks or alerts in this slice. A caller that leaves early does not stop the
+Setup, reload and inventory calls do not start scans. The only background work
+is the daily [withdrawn-version check](ha-status.md), which downloads one signed
+file and never starts or blocks a scan. A caller that leaves early does not stop the
 scan; its result is still saved.
 
 This is a pre-release; see [Install the pre-release](install.md). Framework tests
