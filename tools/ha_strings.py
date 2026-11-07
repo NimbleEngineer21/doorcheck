@@ -28,7 +28,10 @@ def catalog(locale: str | None = None) -> dict[str, object]:
             "step": {
                 "init": {
                     "description": render("ha.options.description", locale=locale),
-                    "data": {"save_results": render("ha.options.save_results", locale=locale)},
+                    "data": {
+                        "save_results": render("ha.options.save_results", locale=locale),
+                        "check_status": render("ha.options.check_status", locale=locale),
+                    },
                 }
             }
         },
@@ -63,6 +66,16 @@ def catalog(locale: str | None = None) -> dict[str, object]:
             "clear_results": {
                 "name": render("ha.service.clear_name", locale=locale),
                 "description": render("ha.service.clear_description", locale=locale),
+            },
+        },
+        "issues": {
+            "revoked": {
+                "title": render("ha.issue.revoked_title", locale=locale),
+                "description": render("ha.issue.revoked_description", locale=locale),
+            },
+            "status_unknown": {
+                "title": render("ha.issue.unknown_title", locale=locale),
+                "description": render("ha.issue.unknown_description", locale=locale),
             },
         },
         "exceptions": {

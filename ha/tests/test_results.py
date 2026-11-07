@@ -320,14 +320,14 @@ async def test_turning_saving_off_deletes_results_and_stops_saving(
     form = await hass.config_entries.options.async_init(entry.entry_id)
     assert form["type"] is FlowResultType.FORM
     assert form["step_id"] == "init"
-    assert form["data_schema"]({}) == {"save_results": True}
+    assert form["data_schema"]({}) == {"save_results": True, "check_status": True}
     done = await hass.config_entries.options.async_configure(
         form["flow_id"], {"save_results": False}
     )
     assert done["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.LOADED
-    assert entry.options == {"save_results": False}
+    assert entry.options == {"save_results": False, "check_status": True}
     assert KEY not in hass_storage
     view = (await call(hass, "scan_integration", directory="example"))["results"]
     assert view["saving"] == "disabled"
@@ -339,7 +339,7 @@ async def test_turning_saving_off_deletes_results_and_stops_saving(
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
     assert diagnostics["saved_results"] == {"status": "disabled", "items": 0, "store_version": 1}
     form = await hass.config_entries.options.async_init(entry.entry_id)
-    assert form["data_schema"]({}) == {"save_results": False}
+    assert form["data_schema"]({}) == {"save_results": False, "check_status": True}
 
 
 async def test_removing_doorcheck_deletes_saved_results(

@@ -26,9 +26,22 @@ def test_native_structure_uses_shared_messages() -> None:
             "step": {
                 "init": {
                     "description": render("ha.options.description"),
-                    "data": {"save_results": render("ha.options.save_results")},
+                    "data": {
+                        "save_results": render("ha.options.save_results"),
+                        "check_status": render("ha.options.check_status"),
+                    },
                 }
             }
+        },
+        "issues": {
+            "revoked": {
+                "title": render("ha.issue.revoked_title"),
+                "description": render("ha.issue.revoked_description"),
+            },
+            "status_unknown": {
+                "title": render("ha.issue.unknown_title"),
+                "description": render("ha.issue.unknown_description"),
+            },
         },
         "services": {
             "scan_integration": {
@@ -103,7 +116,7 @@ def test_every_string_is_rendered_in_the_requested_locale() -> None:
 
     with patch.object(ha_strings, "render", tagged):
         leaves = _leaves(ha_strings.catalog("xx"))
-    assert len(leaves) == 34
+    assert len(leaves) == 39
     assert [leaf for leaf in leaves if not str(leaf).endswith("@xx")] == []
 
 
