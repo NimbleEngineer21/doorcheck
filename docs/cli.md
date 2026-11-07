@@ -6,7 +6,7 @@ network requests. Repository scans download only an explicit commit or tag from 
 mode installs dependencies or imports or executes scanned code.
 
 Use Python 3.13.2 or newer on Linux or macOS. Install the pre-release with
-`pip install doorcheck==0.1.0a1` once it is published, or run from a checkout with
+`pip install doorcheck==0.1.0a2` once it is published, or run from a checkout with
 uv 0.13.4 or newer:
 
 ```console
@@ -58,8 +58,11 @@ the fetch API's per-file release/source difference list. A source difference is
 not automatically a finding, and an absent finding is not a source-match claim.
 
 Downloads and redirects stay within the existing GitHub host allowlist, with
-byte limits and timeouts. Extraction rejects traversal, symbolic links and
-unsupported archive paths and enforces member, size and nesting limits. Files
+byte limits and timeouts. Extraction rejects traversal and unsupported archive
+paths in the whole archive and enforces member, size and nesting limits. It
+refuses a symbolic link that it must read or unpack: one in the installed
+folder or the release file, or `hacs.json`. A link elsewhere in the repository
+is never written and does not stop the scan. Files
 are extracted in a private temporary directory and removed after the scan,
 including failure and interruption cleanup. No code or package build hooks run.
 There is no cache, authentication option or single command-wide time limit.

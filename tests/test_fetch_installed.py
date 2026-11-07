@@ -15,7 +15,7 @@ from doorcheck.fetch import (
     tree_digest,
 )
 from doorcheck.report import Target
-from tests.conftest import make_zip
+from tests.conftest import LINK, make_zip
 
 pytestmark = pytest.mark.usefixtures("offline")
 
@@ -176,6 +176,42 @@ def test_a_traversal_release_zip_is_rejected_before_writing(tmp_path: Path) -> N
         UnsafeArchive, match=r"^path escapes the folder: '\.\./\.\./configuration\.yaml'$"
     ):
         from_repo("owner/demo", "v1.2", tmp_path / "cc" / "demo", FakeGitHub(pages))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_link_outside_the_integration_folder_does_not_stop_the_install(tmp_path: Path) -> None:
+    entries = {f"demo-1.2/{path}": content for path, content in INTEGRATION.items()}
+    entries["demo-1.2/ha/custom_components"] = (LINK, "../custom_components")
+    pages = {SOURCE: make_zip(entries, comment=COMMIT.encode())}
+    installed = from_repo("owner/demo", "v1.2", tmp_path / "demo", FakeGitHub(pages))
+    assert sorted(files(installed.root)) == ["__init__.py", "manifest.json"]
+
+
+@pytest.mark.parametrize(
+    ("path", "hacs"),
+    [
+        ("custom_components/demo/secrets.yaml", None),
+        ("scripts/link", '{"content_in_root": true}'),
+    ],
+)
+def test_a_link_in_what_is_installed_is_refused(
+    tmp_path: Path, path: str, hacs: str | None
+) -> None:
+    entries: dict[str, object] = {f"demo-1.2/{p}": c for p, c in INTEGRATION.items()}
+    entries[f"demo-1.2/{path}"] = (LINK, "/config/secrets.yaml")
+    if hacs is not None:
+        entries["demo-1.2/hacs.json"] = hacs
+    pages = {SOURCE: make_zip(entries, comment=COMMIT.encode())}
+    with pytest.raises(UnsafeArchive, match=f"^link 'demo-1.2/{re.escape(path)}'$"):
+        from_repo("owner/demo", "v1.2", tmp_path / "demo", FakeGitHub(pages))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_link_in_a_release_file_is_refused(tmp_path: Path) -> None:
+    release = make_zip({"__init__.py": "x", "secrets.yaml": (LINK, "/config/secrets.yaml")})
+    pages = {SOURCE: source_zip(INTEGRATION, hacs=ZIP_RELEASE), ASSET: release}
+    with pytest.raises(UnsafeArchive, match=r"^link 'secrets\.yaml'$"):
+        from_repo("owner/demo", "v1.2", tmp_path / "demo", FakeGitHub(pages))
     assert list(tmp_path.iterdir()) == []
 
 

@@ -1,7 +1,7 @@
 # Home Assistant development scaffold
 
-`custom_components/doorcheck` is the Home Assistant integration. Version 0.1.0a1
-is its first pre-release; [Install the pre-release](install.md) has the HACS
+`custom_components/doorcheck` is the Home Assistant integration. Version 0.1.0a2
+is its current pre-release; [Install the pre-release](install.md) has the HACS
 steps. It provides a native single-instance setup confirmation, setup,
 unload and reload, plus minimal diagnostics and an on-demand read-only custom
 integration inventory and explicit static scans of one selected integration.
@@ -16,8 +16,8 @@ for selection, report contracts and snapshot/work limits.
 
 ## Dependency boundary
 
-The integration manifest requires exactly `doorcheck==0.1.0a1`, and its own
-version is also `0.1.0a1`. An ordinary HA installation gets that engine from PyPI.
+The integration manifest requires exactly `doorcheck==0.1.0a2`, and its own
+version is also `0.1.0a2`. An ordinary HA installation gets that engine from PyPI.
 The isolated test project supplies the local engine checkout as an editable
 dependency satisfying that exact version; it does not substitute a package with a
 similar name or fetch an unreviewed implementation.

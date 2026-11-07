@@ -3,7 +3,7 @@ name = "doorcheck-ha-tests"
 version = "0.0.0"
 requires-python = ">=3.13.2"
 dependencies = [
-    "doorcheck==0.1.0a1",
+    "doorcheck==0.1.0a2",
     "mutmut==3.8.1",
 ]
 

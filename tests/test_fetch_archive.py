@@ -153,9 +153,87 @@ def test_dots_inside_names_are_fine() -> None:
     assert list(archive.files) == ["a..b/..c.py", "x:y"]
 
 
-def test_links_are_rejected() -> None:
-    with rejected("link 'repo/secrets.yaml'"):
-        Archive(make_zip({"repo/secrets.yaml": (LINK, "../../secrets.yaml")}), strip_top=True)
+# --- links ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def linked() -> Archive:
+    """A repo whose tests reach the integration through a link, as this one's do."""
+    entries = {
+        "repo/hacs.json": "{}",
+        "repo/custom_components/demo/__init__.py": "init",
+        "repo/ha/custom_components": (LINK, "../custom_components"),
+        "repo/docs/secrets.yaml": (LINK, "../../secrets.yaml"),
+    }
+    return Archive(make_zip(entries), strip_top=True)
+
+
+def test_links_are_kept_apart_from_regular_files(linked: Archive) -> None:
+    assert linked.links == {"ha/custom_components", "docs/secrets.yaml"}
+    assert Archive(make_zip({"repo/a.py": "x"}), strip_top=True).links == set()
+
+
+def test_links_outside_the_installed_folder_do_not_stop_the_scan(
+    linked: Archive, tmp_path: Path
+) -> None:
+    assert linked.read("hacs.json") == b"{}"
+    assert linked.folders("custom_components") == ["demo"]
+    assert list(linked.digests("custom_components/demo")) == ["__init__.py"]
+    dest = tmp_path / "demo"
+    assert linked.extract(dest, "custom_components/demo") == 1
+    assert [p.name for p in dest.iterdir()] == ["__init__.py"]
+
+
+def test_a_link_that_is_read_is_refused(linked: Archive) -> None:
+    with rejected("link 'repo/docs/secrets.yaml'"):
+        linked.read("docs/secrets.yaml")
+
+
+@pytest.mark.parametrize(
+    ("below", "message"),
+    [
+        ("", "link 'repo/docs/secrets.yaml'"),
+        ("docs", "link 'repo/docs/secrets.yaml'"),
+        ("ha/custom_components", "link 'repo/ha/custom_components'"),
+        ("ha/custom_components/x", "link 'repo/ha/custom_components'"),
+    ],
+)
+def test_a_link_inside_or_above_the_unpacked_folder_is_refused(
+    linked: Archive, tmp_path: Path, below: str, message: str
+) -> None:
+    with rejected(message):
+        linked.digests(below)
+    with rejected(message):
+        linked.extract(tmp_path / "dest", below)
+    assert not (tmp_path / "dest").exists()
+
+
+@pytest.mark.parametrize(
+    ("below", "message"),
+    [
+        ("ha", "link 'repo/ha/custom_components'"),
+        ("ha/custom_components", "link 'repo/ha/custom_components'"),
+        ("ha/custom_components/x", "link 'repo/ha/custom_components'"),
+    ],
+)
+def test_a_link_listed_as_a_folder_or_above_one_is_refused(
+    linked: Archive, below: str, message: str
+) -> None:
+    with rejected(message):
+        linked.folders(below)
+
+
+def test_a_link_deeper_than_the_listed_folders_is_left_for_unpacking() -> None:
+    entries = {"repo/cc/demo/x.py": "x", "repo/cc/demo/link": (LINK, "/etc/passwd")}
+    archive = Archive(make_zip(entries), strip_top=True)
+    assert archive.folders("cc") == ["demo"]
+    with rejected("link 'repo/cc/demo/link'"):
+        archive.digests("cc/demo")
+
+
+def test_a_link_still_counts_for_duplicates_and_clashes() -> None:
+    with rejected("a is both a file and a folder"):
+        Archive(make_zip({"repo/a": (LINK, "b"), "repo/a/c.py": "x"}), strip_top=True)
 
 
 @pytest.mark.parametrize(

@@ -1,10 +1,15 @@
 """Read and unpack an untrusted zip without letting it write outside its folder.
 
 Every member name is checked before anything is written. Names that are
-absolute, climb out with "..", use backslashes, are links, appear twice, are
-both a file and a folder, hold control or invisible formatting characters, or
-are deeper or longer than a file system allows reject the whole archive: an
-archive built like that is itself a warning sign, so it is never partly unpacked.
+absolute, climb out with "..", use backslashes, appear twice, are both a file
+and a folder, hold control or invisible formatting characters, or are deeper or
+longer than a file system allows reject the whole archive: an archive built like
+that is itself a warning sign, so it is never partly unpacked.
+
+Links are refused only where they are used: when one is read, listed as a
+folder, or is inside or above the folder that is hashed or unpacked. A link
+elsewhere in a repository, such as one that only its own tests use, is never
+written and does not stop the scan.
 """
 
 import hashlib
@@ -50,11 +55,13 @@ class Archive:
             raise UnsafeArchive(f"not a zip archive: {error}") from error
         _check_size(self._zip.infolist(), limits)
         self.files = _files(self._zip.infolist(), strip_top)
+        self.links = frozenset(name for name, info in self.files.items() if _is_link(info))
         if strip_top:
             _check_top(self._zip.infolist())
         self.commit = _commit(self._zip.comment)
 
     def read(self, path: str) -> bytes | None:
+        self._refuse_links([path])
         info = self.files.get(path)
         return self._read(info) if info else None
 
@@ -64,6 +71,7 @@ class Archive:
         names = {
             path[len(prefix) :].split("/")[0] for path in self.files if path.startswith(prefix)
         }
+        self._refuse_links([*_lineage(below), *(f"{prefix}{name}" for name in names)])
         return sorted(name for name in names if f"{prefix}{name}" not in self.files)
 
     def digests(self, below: str = "") -> dict[str, str]:
@@ -94,11 +102,14 @@ class Archive:
 
     def _below(self, below: str) -> list[tuple[str, zipfile.ZipInfo]]:
         prefix = f"{below}/" if below else ""
-        return [
-            (path[len(prefix) :], info)
-            for path, info in sorted(self.files.items())
-            if path.startswith(prefix)
-        ]
+        inside = sorted(path for path in self.files if path.startswith(prefix))
+        self._refuse_links([*_lineage(below), *inside])
+        return [(path[len(prefix) :], self.files[path]) for path in inside]
+
+    def _refuse_links(self, names: list[str]) -> None:
+        for name in names:
+            if name in self.links:
+                raise UnsafeArchive(f"link {self.files[name].orig_filename!r}")
 
     def _read(self, info: zipfile.ZipInfo) -> bytes:
         try:
@@ -166,9 +177,17 @@ def _name(info: zipfile.ZipInfo, strip_top: bool) -> str:
     too_long = any(len(part.encode()) > MAX_PART_BYTES for part in parts)
     if len(parts) > MAX_DEPTH or too_long:
         raise UnsafeArchive(f"path too deep or too long: {raw[:100]!r}")
-    if stat.S_ISLNK(info.external_attr >> 16):
-        raise UnsafeArchive(f"link {raw!r}")
     return "/".join(parts[1:] if strip_top else parts)
+
+
+def _is_link(info: zipfile.ZipInfo) -> bool:
+    return stat.S_ISLNK(info.external_attr >> 16)
+
+
+def _lineage(below: str) -> list[str]:
+    """`below` and every folder above it: "a/b" -> ["a/b", "a", "."]. No member is
+    named "" or ".", so those never match a link."""
+    return [below, *map(str, PurePosixPath(below).parents)]
 
 
 def _check_top(infos: list[zipfile.ZipInfo]) -> None:

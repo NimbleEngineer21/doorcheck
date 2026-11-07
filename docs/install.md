@@ -1,17 +1,17 @@
 # Install the pre-release
 
-Doorcheck 0.1.0a1 is the first pre-release of the Home Assistant integration and
+Doorcheck 0.1.0a2 is the current pre-release of the Home Assistant integration and
 its scanning engine. It is alpha software for testing. Its screens, actions,
 reports and saved data can change in each pre-release.
 
-These steps work only after the `v0.1.0a1` release appears on the
+These steps work only after the `v0.1.0a2` release appears on the
 [Releases page](https://github.com/NimbleEngineer21/doorcheck/releases).
 
 ## Before you install
 
 - You need Home Assistant 2025.11.0 or newer and HACS 2.
 - The integration installs the engine from PyPI, pinned to exactly
-  `doorcheck==0.1.0a1`. It installs no other scanner.
+  `doorcheck==0.1.0a2`. It installs no other scanner.
 - **Daily withdrawn-version check.** The integration downloads one signed file
   from GitHub each day and shows a Repairs issue if the maintainer withdrew the
   installed version. You can turn it off. See [Withdrawn-version check](ha-status.md).
@@ -25,7 +25,7 @@ These steps work only after the `v0.1.0a1` release appears on the
 2. Enter `https://github.com/NimbleEngineer21/doorcheck`, select the type
    **Integration**, then select **Add**.
 3. Open **Doorcheck** in HACS and select **Download**.
-4. Expand **Need a different version?** and select `v0.1.0a1`, which HACS marks
+4. Expand **Need a different version?** and select `v0.1.0a2`, which HACS marks
    as a pre-release. Do not keep the default value: while no stable release
    exists, HACS selects the latest commit, and that download fails, because
    Doorcheck ships as a release ZIP.
@@ -60,8 +60,8 @@ the published release with the published engine.
 To scan the release yourself, install the command-line tool and scan the tag:
 
 ```console
-pip install doorcheck==0.1.0a1
-doorcheck scan --repo NimbleEngineer21/doorcheck --tag v0.1.0a1
+pip install doorcheck==0.1.0a2
+doorcheck scan --repo NimbleEngineer21/doorcheck --tag v0.1.0a2
 ```
 
 A pre-release installs only with an exact version or with `--pre`.
