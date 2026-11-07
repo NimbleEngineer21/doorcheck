@@ -1,4 +1,4 @@
-"""Single-instance setup and the saved-results option, through native flows."""
+"""Single-instance setup and its two options, through native flows."""
 
 from importlib import import_module
 from typing import Any
@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResu
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, NAME, SAVE_RESULTS
+from .const import CHECK_STATUS, DOMAIN, NAME, SAVE_RESULTS
 
 
 class DoorcheckConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -29,14 +29,21 @@ class DoorcheckConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class DoorcheckOptionsFlow(OptionsFlow):
-    """Turning saving off deletes saved results when the entry reloads."""
+    """Turning saving off deletes saved results; turning the status check off stops it."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            return self.async_create_entry(data={SAVE_RESULTS: user_input[SAVE_RESULTS]})
-        current = self.config_entry.options.get(SAVE_RESULTS, True)
+            return self.async_create_entry(
+                data={key: user_input[key] for key in (SAVE_RESULTS, CHECK_STATUS)}
+            )
+        options = self.config_entry.options
         # Use the native schema implementation across the HA validator migration.
         native = type(cv.PLATFORM_SCHEMA)
         required = import_module(native.__module__).Required
-        schema = native({required(SAVE_RESULTS, default=current): bool})
+        schema = native(
+            {
+                required(SAVE_RESULTS, default=options.get(SAVE_RESULTS, True)): bool,
+                required(CHECK_STATUS, default=options.get(CHECK_STATUS, True)): bool,
+            }
+        )
         return self.async_show_form(step_id="init", data_schema=schema)

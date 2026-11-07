@@ -80,6 +80,12 @@ async def test_diagnostics_never_export_configuration(hass: HomeAssistant) -> No
         "engine_version": version("doorcheck"),
         "scanning_available": True,
         "saved_results": {"status": "on", "items": 0, "store_version": 1},
+        "status_check": {
+            "state": "waiting",
+            "sequence": None,
+            "expires": None,
+            "last_checked": None,
+        },
     }
     assert "private" not in json.dumps(data)
 

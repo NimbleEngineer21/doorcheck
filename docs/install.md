@@ -12,12 +12,11 @@ These steps work only after the `v0.1.0a1` release appears on the
 - You need Home Assistant 2025.11.0 or newer and HACS 2.
 - The integration installs the engine from PyPI, pinned to exactly
   `doorcheck==0.1.0a1`. It installs no other scanner.
-- **No self-revocation yet.** This pre-release cannot tell you that a Doorcheck
-  version was withdrawn for a security problem. Watch the repository's releases
-  and [security advisories](https://github.com/NimbleEngineer21/doorcheck/security/advisories)
-  until a later release adds this.
+- **Daily withdrawn-version check.** The integration downloads one signed file
+  from GitHub each day and shows a Repairs issue if the maintainer withdrew the
+  installed version. You can turn it off. See [Withdrawn-version check](ha-status.md).
 - [What the integration does](home-assistant-development.md) describes its
-  limits. It does not raise alerts or start background scans.
+  limits. It does not start background scans.
 
 ## Install with HACS
 

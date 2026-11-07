@@ -12,6 +12,7 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: DoorcheckEntry
 ) -> dict[str, Any]:
     results = entry.runtime_data.results
+    status = entry.runtime_data.status
     return {
         "engine_version": entry.runtime_data.engine_version,
         "scanning_available": True,
@@ -20,4 +21,5 @@ async def async_get_config_entry_diagnostics(
             "items": len(results.items),
             "store_version": STORE_VERSION,
         },
+        "status_check": status.diagnostics() if status is not None else {"state": "off"},
     }

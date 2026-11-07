@@ -75,8 +75,8 @@
   "finding.unauth_file_path_detail": "4332ecd9ff325f002ac7ad79b4873ddcc6dbcfee6fb638da0c6f861a2d0a8b61",
   "ha.config.already_configured": "bdef4adbee6c8db3a351a278c92dcbbd3432f6740c9eb37bee9307c569d93c3a",
   "ha.config.already_in_progress": "186650f189438713fc75632306f14e7a7d78c20855c681374fbc8a34b782684d",
-  "ha.config.description": "a967b45b17fca80814374e114a3ee313d547aad89b4b36b043c483d4fc517a76",
-  "ha.options.description": "00ed6d764d0354d49782095980760ca51b971a7aa9e8f46233a7fa324f37aae2",
+  "ha.config.description": "235af266591292ea25a9958c9377f40bf4ec7c4a48c5fbde653b8908374cadea",
+  "ha.options.description": "b4898b667bb774aaf5db8a83600a5e15cde6a8572beabc7dcd5e4366f6387f16",
   "ha.options.save_results": "d095727ddcee28e49b2b2b41e673da6c924f6c14bb4d31201619b13c7fec5ba3",
   "ha.panel.added_capabilities": "e0d0718775de898f21e79d2df55500a82990318aa2f7f0a8d42a47ee20cafca5",
   "ha.panel.added_findings": "b732eaad2f594e2fe6515b23f1daa8e01c8663d62e16d2fb25c65f92dc3f5343",
@@ -239,5 +239,10 @@
   "value.false": "d44768149ecf71a861daa43d0eb35c2b3cc91357ff24b7ed4d7e5d1761208d12",
   "value.omitted": "a5804fe1beae5bece6f7d5396cfc86a9c813d23727b8e5c38ea5f3aa782e681d",
   "value.true": "728662c120a39c25aa1492d8d441390331974397e6db57b91b9285055d63e53c",
-  "value.unresolved": "8f34d2bda146039e2a85f7863d79699b0a6efb531cd32131b7f2c69c172e4128"
+  "value.unresolved": "8f34d2bda146039e2a85f7863d79699b0a6efb531cd32131b7f2c69c172e4128",
+  "ha.options.check_status": "369d03114d5fc8a32eef70a67860c9ad753e358fb34968e7bb2575cb6b1d9233",
+  "ha.issue.revoked_title": "d4f21bef0b01e39c86fa608edba3e9cdda397e9c5ec14497165152ed7c9cf2fe",
+  "ha.issue.revoked_description": "e320c9ec2d70b0077de2ffa5c42971c628b44b02464d7d1fc48982ededf95ae5",
+  "ha.issue.unknown_title": "722c58902c9a47c9699cc9623776d6770c78be77fb14b4cc2e8f78207882a09e",
+  "ha.issue.unknown_description": "f4df82684c7afcbd18041a408e89293b067d0790ea03c85f950959ca15ad4f43"
 }
