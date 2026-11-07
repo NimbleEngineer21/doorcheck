@@ -69,4 +69,4 @@ is never stored in GitHub. Its public key is pinned in
 
 ## Supported versions
 
-Version 0.1.0a1 is a pre-release. Only the latest release receives security fixes.
+Version 0.1.0a2 is a pre-release. Only the latest release receives security fixes.
