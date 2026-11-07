@@ -40,6 +40,11 @@ KEY = "doorcheck.status"
 
 
 @pytest.fixture(autouse=True)
+def offline_status() -> None:
+    """These tests mock HTTP themselves, so the real download code runs."""
+
+
+@pytest.fixture(autouse=True)
 def pinned(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(revocation, "PUBLIC_KEYS", (base64.b64encode(RAW).decode(),))
 

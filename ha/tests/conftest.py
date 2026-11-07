@@ -17,3 +17,14 @@ def frontend_bundle():
 
     with patch("homeassistant.components.frontend.async_setup", return_value=True):
         yield
+
+
+@pytest.fixture(autouse=True)
+def offline_status():
+    """Tests never reach GitHub; test_status.py replaces this with its own mocks."""
+    from unittest.mock import patch
+
+    from custom_components.doorcheck import status
+
+    with patch.object(status, "fetch", side_effect=status.FetchError("offline in tests")):
+        yield

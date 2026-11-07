@@ -3,6 +3,7 @@
 import base64
 import json
 import stat
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -105,6 +106,21 @@ def test_sign_makes_a_pinned_verifiable_document(
     assert list(payload) == ["expires", "format", "issued", "revoked", "sequence"]
     assert payload["issued"] == "2026-11-10T12:30:15+00:00"
     assert b": " not in base64.b64decode(json.loads(data)["payload"])
+
+
+def test_sign_writes_utc_whatever_the_host_zone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key = make_key(tmp_path, monkeypatch)
+    monkeypatch.setenv("TZ", "America/New_York")
+    time.tzset()
+    try:
+        data = tool.sign(key, 1, [], asker(PASS), NOW)
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+    payload = json.loads(base64.b64decode(json.loads(data)["payload"]))
+    assert payload["issued"] == "2026-11-10T12:30:15+00:00"
 
 
 def test_sign_takes_other_periods(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
