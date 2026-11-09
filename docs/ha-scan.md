@@ -56,9 +56,11 @@ operation may run longer. Copies are cleaned up after success or failure.
 The copy is a bounded collection of file reads, not an atomic filesystem
 snapshot or proof that the installed tree stayed unchanged. Detected changes
 within a file read fail the snapshot; changes between reads may produce a mixed
-view. Once copied, candidate code cannot alter the private scan tree through
+view. Once copied, the scanned files cannot alter the private scan tree through
 symlink or parent-directory replacement. Candidate Python is parsed, never
 imported or executed. No external scanners, network calls or AI providers run.
+These limits cover the files that Doorcheck scans, not other code that already
+runs in Home Assistant; see [Same-process limit](#same-process-limit).
 
 Only one scan worker can be active per HA instance. Concurrent requests receive
 a translated busy error. Cancelling a caller does not terminate a thread or free
@@ -78,3 +80,19 @@ The [admin results panel](ha-panel.md) provides a directory picker and explicit
 scan button over this action. It renders findings, capabilities and coverage gaps,
 and opens each integration on its saved result and the changes since the reviewed
 scan.
+
+## Same-process limit
+
+Doorcheck runs inside the Home Assistant process, like every custom
+integration. Home Assistant does not isolate integrations from one another.
+Any integration that Home Assistant has loaded, including the one you scan,
+can change Doorcheck's code, a scan in progress, [saved results](ha-baselines.md)
+and what the [panel](ha-panel.md) shows. Doorcheck cannot detect or prevent this
+from inside the same process: a check that it ran would be just as easy to change.
+
+An integration in `custom_components` that Home Assistant has loaded has already
+run. A scan of it describes its files; it does not undo what that code did.
+
+Treat a result from Home Assistant as an independent check only when no
+untrusted code was loaded. For an independent result, scan the release with the
+[CLI](cli.md) on a different computer before you install it.

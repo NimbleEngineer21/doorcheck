@@ -205,3 +205,5 @@ to valid JSON without the store envelope (for example `{"data": {}}` or `[1]`).
 
 The store is not signed. Anyone who can edit `.storage` can change saved results
 within these checks; saved results describe earlier scans, not verified history.
+Any integration that Home Assistant has loaded can also change them; see the
+[same-process limit](ha-scan.md#same-process-limit).

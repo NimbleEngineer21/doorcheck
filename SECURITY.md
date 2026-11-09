@@ -51,6 +51,18 @@ Out of scope: vulnerabilities in third-party integrations that Doorcheck scans.
 Report those to their authors. How Doorcheck handles problems it finds in other
 projects is in [DISCLOSURE.md](DISCLOSURE.md).
 
+Out of scope: tampering by other code that runs inside Home Assistant. Like
+every custom integration, Doorcheck runs inside the Home Assistant process, and
+Home Assistant does not isolate integrations from one another. Any integration
+that Home Assistant has loaded can change Doorcheck's code, a scan in progress,
+saved results and what the panel shows. Doorcheck cannot prevent this from inside
+the same process, and a check that it ran would be just as easy to change. A
+scan of an integration that is already loaded also comes after that code ran.
+A result from an instance that already runs untrusted code is therefore not
+independent evidence. For an independent result, scan with the
+[CLI](docs/cli.md) on a different computer before you install. See
+[the same-process limit](docs/ha-scan.md#same-process-limit).
+
 ## Status signing key
 
 The maintainer signs the withdrawn-version file offline with an Ed25519 key that
