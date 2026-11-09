@@ -1864,11 +1864,11 @@ requires-dist = [{ name = "packaging", specifier = ">=23.1" }]
 dev = [
     { name = "commitizen", specifier = "==4.19.3" },
     { name = "complexipy", specifier = "==8.3.0" },
-    { name = "cryptography", specifier = "==50.0.1" },
+    { name = "cryptography", specifier = "==50.0.2" },
     { name = "import-linter", specifier = "==2.15" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "mutmut", specifier = "==3.8.1" },
-    { name = "mypy", specifier = "==2.4.0" },
+    { name = "mypy", specifier = "==2.4.1" },
     { name = "pip-audit", specifier = "==2.10.1" },
     { name = "playwright", specifier = "==1.64.1" },
     { name = "pytest", specifier = "==9.2.0" },
