@@ -34,11 +34,11 @@ Security = "https://github.com/nimbleengineer21/doorcheck/security/policy"
 dev = [
     "commitizen==4.19.3",
     "complexipy==8.3.0",
-    "cryptography==50.0.1",
+    "cryptography==50.0.2",
     "import-linter==2.15",
     "jsonschema==4.26.0",
     "mutmut==3.8.1",
-    "mypy==2.4.0",
+    "mypy==2.4.1",
     "pip-audit==2.10.1",
     "playwright==1.64.1",
     "pytest==9.2.0",
