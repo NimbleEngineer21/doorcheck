@@ -60,10 +60,18 @@ not automatically a finding, and an absent finding is not a source-match claim.
 Downloads and redirects stay within the existing GitHub host allowlist, with
 byte limits and timeouts. Extraction rejects traversal and unsupported archive
 paths in the whole archive and enforces member, size and nesting limits. It
-refuses a symbolic link that it must read or unpack: one in the installed
-folder or the release file, or `hacs.json`. A link elsewhere in the repository
-is never written and does not stop the scan. Files
-are extracted in a private temporary directory and removed after the scan,
+refuses a symbolic link that it must read or unpack:
+
+- `hacs.json`, when it is a link.
+- A link inside the installed folder, or a link in place of that folder or of
+  any folder above it, such as `custom_components`.
+- A link directly inside `custom_components/`, where Doorcheck lists the
+  integration folders to choose the installed one.
+- Any link at all in a release file, or in a repository whose `hacs.json` sets
+  `content_in_root`, because the whole archive is installed.
+
+A link elsewhere in the repository is never written and does not stop the scan. Files are extracted in a private temporary directory
+and removed after the scan,
 including failure and interruption cleanup. No code or package build hooks run.
 There is no cache, authentication option or single command-wide time limit.
 
