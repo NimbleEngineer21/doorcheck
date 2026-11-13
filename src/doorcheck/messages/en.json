@@ -178,6 +178,7 @@
   "presentation.title": "See the observation. Know the limits.",
   "presentation.unavailable": "Scan unavailable",
   "presentation.unavailable_description": "The scan did not run or failed. Results are unavailable.",
+  "problem.archive_link": "Doorcheck refused to scan because the archive has a symbolic link where it must read or unpack files: {path}",
   "problem.conflicting_requirements": "Conflicting versions are declared for this dependency. It was not checked.",
   "problem.dependency_not_checked": "The scanner did not report a result for this dependency. It was not checked.",
   "problem.directory_not_readable": "Doorcheck could not read this directory. Some files were not checked.",

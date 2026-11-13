@@ -1,7 +1,7 @@
 """Built-in scan orchestration for the command-line surface."""
 
 import stat
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from importlib.metadata import version
 from pathlib import Path
@@ -42,13 +42,13 @@ def _remote(
             fetched = Check("fetch", installed_version, Status.COMPLETE)
             return replace(report, target=installed.target, checks=(fetched, *report.checks))
     except FetchError as error:
-        return _fetch_failed(repo, installed_version, error.key)
+        return _fetch_failed(repo, installed_version, error.key, error.params)
     except OSError:
-        return _fetch_failed(repo, installed_version, "problem.fetch_failed")
+        return _fetch_failed(repo, installed_version, "problem.fetch_failed", {})
 
 
-def _fetch_failed(repo: str, installed_version: str, key: str) -> Report:
-    check = Check("fetch", installed_version, Status.FAILED, (Problem(key),))
+def _fetch_failed(repo: str, installed_version: str, key: str, params: Mapping[str, str]) -> Report:
+    check = Check("fetch", installed_version, Status.FAILED, (Problem(key, params=params),))
     return Report(installed_version, Target(repo), (check,), (), ())
 
 

@@ -13,7 +13,7 @@ from doorcheck.fetch import FetchError, tree_digest
 from doorcheck.fetch.transport import github_opener
 from doorcheck.messages import render
 from doorcheck.report import from_dict
-from tests.conftest import FakeHTTPS, make_zip
+from tests.conftest import LINK, FakeHTTPS, make_zip
 from tests.test_cli import SOURCE
 
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
@@ -138,6 +138,37 @@ def test_failed_fetch_has_no_source_results(
     assert report.target.commit is report.target.artifact_sha256 is None
     assert report.checks[0].problems == (Problem(key),)
     assert report.capabilities == report.findings == ()
+
+
+LINKED = make_zip(
+    {
+        "demo/custom_components/demo/manifest.json": '{"domain": "demo"}',
+        "demo/custom_components/demo/secrets.yaml": (LINK, "/config/secrets.yaml"),
+        "demo/hacs.json": "{}",
+    },
+    comment=COMMIT.encode(),
+)
+LINK_PATH = "custom_components/demo/secrets.yaml"
+
+
+@pytest.mark.parametrize("flag", ["--json", "--sarif", "human"])
+def test_a_refused_link_is_named_in_every_format(
+    flag: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    handler = FakeHTTPS({URL: LINKED})
+    with patch("doorcheck.fetch.transport.github_opener", return_value=github_opener(handler)):
+        assert cli.main(ARGS + ([] if flag == "human" else [flag])) == 2
+    out = capsys.readouterr().out
+    message = render("problem.archive_link", {"path": LINK_PATH})
+    assert message.endswith(f": {LINK_PATH}")
+    if flag == "--json":
+        problem = Problem("problem.archive_link", params={"path": LINK_PATH})
+        assert from_dict(json.loads(out)).checks[0].problems == (problem,)
+    elif flag == "--sarif":
+        results = json.loads(out)["runs"][0]["invocations"][0]["toolExecutionNotifications"]
+        assert [n["message"]["text"] for n in results] == [message]
+    else:
+        assert message in out
 
 
 def test_snapshot_digest_cleanup_and_no_execution(tmp_path: Path) -> None:

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from doorcheck.fetch import (
+    ArchiveLink,
     FetchError,
     UnsafeArchive,
     from_commit,
@@ -202,16 +203,18 @@ def test_a_link_in_what_is_installed_is_refused(
     if hacs is not None:
         entries["demo-1.2/hacs.json"] = hacs
     pages = {SOURCE: make_zip(entries, comment=COMMIT.encode())}
-    with pytest.raises(UnsafeArchive, match=f"^link 'demo-1.2/{re.escape(path)}'$"):
+    with pytest.raises(ArchiveLink, match=f"^link 'demo-1.2/{re.escape(path)}'$") as error:
         from_repo("owner/demo", "v1.2", tmp_path / "demo", FakeGitHub(pages))
+    assert dict(error.value.params) == {"path": path}
     assert list(tmp_path.iterdir()) == []
 
 
 def test_a_link_in_a_release_file_is_refused(tmp_path: Path) -> None:
     release = make_zip({"__init__.py": "x", "secrets.yaml": (LINK, "/config/secrets.yaml")})
     pages = {SOURCE: source_zip(INTEGRATION, hacs=ZIP_RELEASE), ASSET: release}
-    with pytest.raises(UnsafeArchive, match=r"^link 'secrets\.yaml'$"):
+    with pytest.raises(ArchiveLink, match=r"^link 'secrets\.yaml'$") as error:
         from_repo("owner/demo", "v1.2", tmp_path / "demo", FakeGitHub(pages))
+    assert dict(error.value.params) == {"path": "secrets.yaml"}
     assert list(tmp_path.iterdir()) == []
 
 

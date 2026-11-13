@@ -70,10 +70,12 @@ refuses a symbolic link that it must read or unpack:
 - Any link at all in a release file, or in a repository whose `hacs.json` sets
   `content_in_root`, because the whole archive is installed.
 
-A link elsewhere in the repository is never written and does not stop the scan. Files are extracted in a private temporary directory
-and removed after the scan,
-including failure and interruption cleanup. No code or package build hooks run.
-There is no cache, authentication option or single command-wide time limit.
+The report names the refused link by its path in the repository or release file
+(`problem.archive_link`). A link elsewhere in the repository is never written
+and does not stop the scan. Files are extracted in a private temporary directory
+and removed after the scan, including failure and interruption cleanup. No code
+or package build hooks run. There is no cache, authentication option or single
+command-wide time limit.
 
 Text and JSON show the repository, requested tag when applicable, available
 source commit and SHA-256 digest of the installed file tree. The digest describes the selected files, not the archive

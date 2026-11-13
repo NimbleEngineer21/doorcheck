@@ -23,7 +23,7 @@ import zlib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from doorcheck.fetch.errors import FetchError, UnsafeArchive
+from doorcheck.fetch.errors import ArchiveLink, FetchError, UnsafeArchive
 
 # The same ceilings Home Assistant's Marketplace applies to what it downloads.
 MAX_BYTES = 100 * 1024 * 1024
@@ -109,7 +109,7 @@ class Archive:
     def _refuse_links(self, names: list[str]) -> None:
         for name in names:
             if name in self.links:
-                raise UnsafeArchive(f"link {self.files[name].orig_filename!r}")
+                raise ArchiveLink(f"link {self.files[name].orig_filename!r}", name)
 
     def _read(self, info: zipfile.ZipInfo) -> bytes:
         try:

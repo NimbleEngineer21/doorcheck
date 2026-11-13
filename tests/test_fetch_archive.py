@@ -16,7 +16,7 @@ from doorcheck.fetch.archive import (
     Archive,
     ArchiveLimits,
 )
-from doorcheck.fetch.errors import FetchError, UnsafeArchive
+from doorcheck.fetch.errors import ArchiveLink, FetchError, UnsafeArchive
 from tests.conftest import LINK, make_zip
 
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
@@ -24,6 +24,15 @@ COMMIT = "0123456789abcdef0123456789abcdef01234567"
 
 def rejected(message: str) -> pytest.RaisesExc[UnsafeArchive]:
     return pytest.raises(UnsafeArchive, match=f"^{re.escape(message)}$")
+
+
+def refused_link(path: str, *, top: str = "repo/") -> pytest.RaisesExc[ArchiveLink]:
+    """The log message names the zip entry; the report param names the repo path."""
+    return pytest.raises(
+        ArchiveLink,
+        match=f"^link {re.escape(repr(top + path))}$",
+        check=lambda error: dict(error.params) == {"path": path},
+    )
 
 
 def test_default_limits_match_marketplace() -> None:
@@ -185,41 +194,41 @@ def test_links_outside_the_installed_folder_do_not_stop_the_scan(
 
 
 def test_a_link_that_is_read_is_refused(linked: Archive) -> None:
-    with rejected("link 'repo/docs/secrets.yaml'"):
+    with refused_link("docs/secrets.yaml"):
         linked.read("docs/secrets.yaml")
 
 
 @pytest.mark.parametrize(
-    ("below", "message"),
+    ("below", "path"),
     [
-        ("", "link 'repo/docs/secrets.yaml'"),
-        ("docs", "link 'repo/docs/secrets.yaml'"),
-        ("ha/custom_components", "link 'repo/ha/custom_components'"),
-        ("ha/custom_components/x", "link 'repo/ha/custom_components'"),
+        ("", "docs/secrets.yaml"),
+        ("docs", "docs/secrets.yaml"),
+        ("ha/custom_components", "ha/custom_components"),
+        ("ha/custom_components/x", "ha/custom_components"),
     ],
 )
 def test_a_link_inside_or_above_the_unpacked_folder_is_refused(
-    linked: Archive, tmp_path: Path, below: str, message: str
+    linked: Archive, tmp_path: Path, below: str, path: str
 ) -> None:
-    with rejected(message):
+    with refused_link(path):
         linked.digests(below)
-    with rejected(message):
+    with refused_link(path):
         linked.extract(tmp_path / "dest", below)
     assert not (tmp_path / "dest").exists()
 
 
 @pytest.mark.parametrize(
-    ("below", "message"),
+    ("below", "path"),
     [
-        ("ha", "link 'repo/ha/custom_components'"),
-        ("ha/custom_components", "link 'repo/ha/custom_components'"),
-        ("ha/custom_components/x", "link 'repo/ha/custom_components'"),
+        ("ha", "ha/custom_components"),
+        ("ha/custom_components", "ha/custom_components"),
+        ("ha/custom_components/x", "ha/custom_components"),
     ],
 )
 def test_a_link_listed_as_a_folder_or_above_one_is_refused(
-    linked: Archive, below: str, message: str
+    linked: Archive, below: str, path: str
 ) -> None:
-    with rejected(message):
+    with refused_link(path):
         linked.folders(below)
 
 
@@ -227,8 +236,23 @@ def test_a_link_deeper_than_the_listed_folders_is_left_for_unpacking() -> None:
     entries = {"repo/cc/demo/x.py": "x", "repo/cc/demo/link": (LINK, "/etc/passwd")}
     archive = Archive(make_zip(entries), strip_top=True)
     assert archive.folders("cc") == ["demo"]
-    with rejected("link 'repo/cc/demo/link'"):
+    with refused_link("cc/demo/link"):
         archive.digests("cc/demo")
+
+
+def test_a_link_in_an_archive_without_a_top_folder_is_named_as_written() -> None:
+    archive = Archive(make_zip({"__init__.py": "x", "lib/secrets.yaml": (LINK, "/config")}))
+    with refused_link("lib/secrets.yaml", top=""):
+        archive.extract(Path("unused"))
+
+
+def test_a_long_link_path_is_clipped_in_the_report_param() -> None:
+    path = f"{'a' * 150}/{'b' * 150}"
+    archive = Archive(make_zip({f"repo/{path}": (LINK, "x")}), strip_top=True)
+    with pytest.raises(ArchiveLink) as error:
+        archive.read(path)
+    assert error.value.params["path"] == f"{path[:199]}…"
+    assert str(error.value) == f"link {f'repo/{path}'!r}"
 
 
 def test_a_link_still_counts_for_duplicates_and_clashes() -> None:
@@ -400,6 +424,18 @@ def test_fetch_errors_have_their_own_keys() -> None:
     assert UnsafeArchive("x").key == "problem.unsafe_archive"
     assert FetchError("x", "problem.download_failed").key == "problem.download_failed"
     assert issubclass(UnsafeArchive, FetchError)
+    assert ArchiveLink("x", "a/b").key == "problem.archive_link"
+    assert issubclass(ArchiveLink, UnsafeArchive)
+
+
+def test_errors_carry_read_only_params() -> None:
+    assert dict(DoorcheckError("x").params) == {}
+    params = {"path": "a"}
+    error = DoorcheckError("x", "problem.fetch_failed", params)
+    params["path"] = "changed"
+    assert dict(error.params) == {"path": "a"}
+    with pytest.raises(TypeError):
+        error.params["path"] = "b"  # type: ignore[index]
     assert issubclass(FetchError, DoorcheckError)
 
 
