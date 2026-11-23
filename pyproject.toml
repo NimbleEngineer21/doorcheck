@@ -35,20 +35,20 @@ dev = [
     "commitizen==4.19.3",
     "complexipy==8.3.0",
     "cryptography==50.0.2",
-    "import-linter==2.15",
+    "import-linter==2.16",
     "jsonschema==4.26.0",
     "mutmut==3.8.1",
     "mypy==2.4.1",
     "pip-audit==2.10.1",
-    "playwright==1.64.1",
+    "playwright==1.65.2",
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "resvg-py==0.5.0",
-    "ruff==0.17.3",
+    "ruff==0.17.5",
 ]
 
 [build-system]
-requires = ["uv_build==0.13.6"]
+requires = ["uv_build==0.13.8"]
 build-backend = "uv_build"
 
 [tool.uv]
